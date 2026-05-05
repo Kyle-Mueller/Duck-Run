@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="DuckRun/NuGet - DuckRun.Core.csproj" />
+  <Project Path="NuGet - DuckRun.Dashboard/NuGet - DuckRun.Dashboard.csproj" />
+  <Project Path="NuGet - DuckRun.EfCore/NuGet - DuckRun.EfCore.csproj" />
+  <Project Path="NuGet - DuckRun.Redis/NuGet - DuckRun.Redis.csproj" />
+  <Project Path="Test - .NET MVC/Test - .NET MVC.csproj" />
+</Solution>
