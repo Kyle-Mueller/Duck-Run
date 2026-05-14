@@ -1,4 +1,4 @@
-using System.Text.Json;
+using MessagePack;
 using DuckRun.Core;
 using DuckRun.Core.Cluster;
 using DuckRun.Redis.Hosting;
@@ -134,7 +134,7 @@ internal sealed class RedisClusterCoordinator( DuckRunRedisOptions options, ILog
 
                 try
                 {
-                    var meta = JsonSerializer.Deserialize<NodeMeta>((string)value!);
+                    var meta = MessagePackSerializer.Deserialize<NodeMeta>((byte[])value!);
                     if (meta is null) continue;
                     nodes.Add(new NodeInfo(NodeId: nodeId,
                                            StartedAt: meta.StartedAt,
@@ -203,12 +203,13 @@ internal sealed class RedisClusterCoordinator( DuckRunRedisOptions options, ILog
     {
         if (_db is null) return;
         var nodeKey = (RedisKey)$"{KeyPrefix}:nodes:{NodeId}";
-        var meta = JsonSerializer.Serialize(new NodeMeta(_startedAt, AssemblyVersion));
+        var meta = MessagePackSerializer.Serialize(new NodeMeta(_startedAt, AssemblyVersion));
         await _db.StringSetAsync(nodeKey, meta, options.HeartbeatTtl);
     }
 
     private RedisKey LeaderKey => $"{KeyPrefix}:leader";
     private RedisKey SlotKey(string jobName) => $"{KeyPrefix}:slots:{jobName}";
 
-    private sealed record NodeMeta(DateTimeOffset StartedAt, string Version);
+    [MessagePackObject]
+    internal sealed record NodeMeta([property: Key(0)] DateTimeOffset StartedAt, [property: Key(1)] string Version);
 }
