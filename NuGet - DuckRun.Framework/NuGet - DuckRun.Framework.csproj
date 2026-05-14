@@ -1,0 +1,79 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <AssemblyName>DuckRun.Framework</AssemblyName>
+    <RootNamespace>DuckRun.Framework</RootNamespace>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>DuckRun.Framework</PackageId>
+    <Title>DuckRun.Framework</Title>
+    <Description>Attribute-driven background job scheduler for classic ASP.NET on .NET Framework 4.8. Same job-author API as DuckRun.Core (use [DuckRunJob] on methods, inject IDuckRunConsole and CancellationToken). Start via DuckRunHost.Start(...) in Global.asax.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cronos" Version="0.13.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="PolySharp" Version="1.15.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Label="Shared abstractions linked from DuckRun.Core">
+    <!-- Jobs -->
+    <Compile Include="..\NuGet - DuckRun.Core\Jobs\DuckRunJobAttribute.cs" Link="Jobs\DuckRunJobAttribute.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Jobs\JobDescriptor.cs" Link="Jobs\JobDescriptor.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Jobs\IJobRegistry.cs" Link="Jobs\IJobRegistry.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Jobs\JobRegistry.cs" Link="Jobs\JobRegistry.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Jobs\JobScanner.cs" Link="Jobs\JobScanner.cs" />
+
+    <!-- Runs -->
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\JobRun.cs" Link="Runs\JobRun.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\JobRunState.cs" Link="Runs\JobRunState.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\IJobRunStore.cs" Link="Runs\IJobRunStore.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\InMemoryJobRunStore.cs" Link="Runs\InMemoryJobRunStore.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\ConcurrencyTracker.cs" Link="Runs\ConcurrencyTracker.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\LocalConcurrencyTrackers.cs" Link="Runs\LocalConcurrencyTrackers.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\JobSlot.cs" Link="Runs\JobSlot.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Runs\JobSlotGate.cs" Link="Runs\JobSlotGate.cs" />
+
+    <!-- Logging -->
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\IDuckRunConsole.cs" Link="Logging\IDuckRunConsole.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\DuckRunConsole.cs" Link="Logging\DuckRunConsole.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\DuckRunLogLevel.cs" Link="Logging\DuckRunLogLevel.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\ConsoleLogEntry.cs" Link="Logging\ConsoleLogEntry.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\IConsoleStore.cs" Link="Logging\IConsoleStore.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\InMemoryConsoleStore.cs" Link="Logging\InMemoryConsoleStore.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\ConsoleRunLog.cs" Link="Logging\ConsoleRunLog.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Logging\ScopedDuckRunConsole.cs" Link="Logging\ScopedDuckRunConsole.cs" />
+
+    <!-- Operations (interface only — DuckRunController is framework-specific) -->
+    <Compile Include="..\NuGet - DuckRun.Core\Operations\IDuckRunController.cs" Link="Operations\IDuckRunController.cs" />
+
+    <!-- Cluster -->
+    <Compile Include="..\NuGet - DuckRun.Core\Cluster\IClusterCoordinator.cs" Link="Cluster\IClusterCoordinator.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Cluster\LocalClusterCoordinator.cs" Link="Cluster\LocalClusterCoordinator.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Cluster\NodeInfo.cs" Link="Cluster\NodeInfo.cs" />
+
+    <!-- Scheduler util -->
+    <Compile Include="..\NuGet - DuckRun.Core\Scheduler\CronUtil.cs" Link="Scheduler\CronUtil.cs" />
+
+    <!-- Reporting (abstractions only; gRPC reporting on net48 is a follow-up) -->
+    <Compile Include="..\NuGet - DuckRun.Core\Reporting\IDashboardReporter.cs" Link="Reporting\IDashboardReporter.cs" />
+    <Compile Include="..\NuGet - DuckRun.Core\Reporting\NullDashboardReporter.cs" Link="Reporting\NullDashboardReporter.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DuckRun.EfCore" />
+    <InternalsVisibleTo Include="DuckRun.Redis" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DuckRun</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="assets/duckrun.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">DuckRun</span>
+      <span class="brand-sub">runtime dashboard</span>
+    </div>
+    <div class="topbar-meta">
+      <span id="job-count" class="meta-chip">— jobs</span>
+      <span id="updated-at" class="meta-chip dim"></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-head">Jobs</div>
+      <ul id="job-list" class="job-list"></ul>
+    </aside>
+
+    <section class="detail" id="detail">
+      <div class="empty">
+        <p>Select a job to see runs and console output.</p>
+      </div>
+    </section>
+  </main>
+
+  <template id="job-list-item-tpl">
+    <li class="job-item">
+      <button class="job-button" type="button">
+        <span class="job-name"></span>
+        <span class="job-cron"></span>
+        <span class="job-state-dot"></span>
+      </button>
+    </li>
+  </template>
+
+  <template id="detail-tpl">
+    <div class="detail-head">
+      <div class="detail-head-left">
+        <h1 class="job-title"></h1>
+        <div class="job-meta">
+          <span class="meta-label">cron</span><span class="meta-value job-cron-val"></span>
+          <span class="meta-label">next</span><span class="meta-value job-next-val"></span>
+          <span class="meta-label">concurrency</span><span class="meta-value job-conc-val"></span>
+          <span class="meta-label">declared on</span><span class="meta-value job-decl-val"></span>
+        </div>
+      </div>
+      <div class="detail-head-actions">
+        <button class="btn btn-primary" data-action="trigger">Trigger now</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <header class="panel-head">Recent runs</header>
+      <table class="runs-table">
+        <thead>
+          <tr>
+            <th>Started</th>
+            <th>State</th>
+            <th>Trigger</th>
+            <th>Duration</th>
+            <th>Run id</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody class="runs-body"><tr><td colspan="6" class="dim">No runs yet.</td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="panel" id="run-panel" hidden>
+      <header class="panel-head">
+        <span>Run console</span>
+        <span class="dim run-id-label"></span>
+      </header>
+      <pre class="console" id="console"></pre>
+      <div class="error-block" hidden>
+        <header>Error</header>
+        <pre class="error-text"></pre>
+      </div>
+    </section>
+  </template>
+
+  <script src="assets/duckrun.js"></script>
+</body>
+</html>

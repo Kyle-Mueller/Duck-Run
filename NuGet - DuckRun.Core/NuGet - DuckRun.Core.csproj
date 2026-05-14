@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+
+    <AssemblyName>DuckRun.Core</AssemblyName>
+    <RootNamespace>DuckRun.Core</RootNamespace>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>DuckRun.Core</PackageId>
+    <Title>DuckRun.Core</Title>
+    <Description>Attribute-driven background job scheduler for ASP.NET Core. A clean-slate alternative to Hangfire and TickerQ with first-class cancellation, console logging, and an optional centralized control dashboard.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cronos" Version="0.13.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.80.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Google.Protobuf" Version="3.34.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Dashboard\Assets\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\Control Dashboard - Backend\Protos\duckrun-v1.proto" Link="Protos\duckrun-v1.proto" GrpcServices="Client" ProtoRoot="..\Control Dashboard - Backend\Protos" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DuckRun.EfCore" />
+    <InternalsVisibleTo Include="DuckRun.Redis" />
+  </ItemGroup>
+
+</Project>

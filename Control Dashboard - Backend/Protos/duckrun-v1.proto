@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+option csharp_namespace = "DuckRun.Protocol.V1";
+
+package duckrun.protocol.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Ingest service. Runtime clients (DuckRun.Core, DuckRun.Framework) push job state to the dashboard.
+// Authentication: the caller MUST send its DSN public key in the "x-duckrun-key" metadata header.
+service IngestService {
+  // One-shot handshake on startup. Registers the node and (optionally) its job definitions.
+  rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
+
+  // Periodic heartbeat from each node.
+  rpc SendHeartbeat(HeartbeatRequest) returns (Ack);
+
+  // Batched run records (create / update).
+  rpc SendRuns(RunsBatch) returns (Ack);
+
+  // Batched console log entries.
+  rpc SendLogs(LogsBatch) returns (Ack);
+}
+
+message HandshakeRequest {
+  string node_id = 1;
+  string client_version = 2;
+  string protocol_version = 3;
+  string runtime = 4;                      // e.g. "net10.0", "net48"
+  repeated JobDefinition jobs = 5;
+  google.protobuf.Timestamp started_at = 6;
+}
+
+message HandshakeResponse {
+  string accepted_protocol_version = 1;
+  string deprecation_warning = 2;
+  map<string, string> server_capabilities = 3;
+  string project_id = 4;                   // returned so the client can sanity-check
+}
+
+message JobDefinition {
+  string name = 1;
+  string cron = 2;
+  int32 max_concurrency = 3;
+  int32 timeout_seconds = 4;
+  bool allow_manual_trigger = 5;
+  bool enabled = 6;
+}
+
+message HeartbeatRequest {
+  string node_id = 1;
+  google.protobuf.Timestamp at = 2;
+  bool is_leader = 3;
+}
+
+message RunRecord {
+  string id = 1;                           // GUID
+  string job_name = 2;
+  string node_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp finished_at = 6;
+  string state = 7;                        // Pending|Running|Succeeded|Failed|Cancelled|TimedOut
+  string trigger_source = 8;
+  string error_message = 9;
+  string error_stack_trace = 10;
+}
+
+message RunsBatch {
+  repeated RunRecord runs = 1;
+}
+
+message LogEntry {
+  string run_id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string level = 3;                        // Info|Warning|Error
+  string message = 4;
+}
+
+message LogsBatch {
+  repeated LogEntry logs = 1;
+}
+
+message Ack {
+  bool ok = 1;
+  string message = 2;
+}

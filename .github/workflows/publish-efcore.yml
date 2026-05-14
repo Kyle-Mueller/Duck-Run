@@ -1,0 +1,120 @@
+name: Publish DuckRun.EfCore
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Explicit version (e.g. 1.2.0). Leave blank to auto-increment the patch from the latest efcore-v* tag (or 1.0.0 if no tag exists yet).'
+        required: false
+        default: ''
+  push:
+    branches: [test]
+    paths:
+      - 'NuGet - DuckRun.EfCore/**'
+      - 'Directory.Build.props'
+      - '.github/workflows/publish-efcore.yml'
+
+env:
+  PACKAGE_ID: DuckRun.EfCore
+  TAG_PREFIX: efcore
+  CSPROJ: NuGet - DuckRun.EfCore/NuGet - DuckRun.EfCore.csproj
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Guard — manual publishes only from master
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/master" ]; then
+            echo "::error::Manual NuGet.org publish is only allowed from master. Current ref: ${GITHUB_REF}"
+            exit 1
+          fi
+
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          LATEST_TAG="$(git tag --list "${TAG_PREFIX}-v*" --sort=-v:refname | head -n 1 || true)"
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_VERSION=""
+          else
+            LATEST_VERSION="${LATEST_TAG#${TAG_PREFIX}-v}"
+          fi
+          echo "Latest stable tag: ${LATEST_TAG:-<none>}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT_VERSION="${{ github.event.inputs.version }}"
+            if [ -n "$INPUT_VERSION" ]; then
+              VERSION="$INPUT_VERSION"
+            elif [ -z "$LATEST_VERSION" ]; then
+              VERSION="1.0.0"
+            else
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+              VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            fi
+          else
+            BASE="${LATEST_VERSION:-1.0.0}"
+            VERSION="${BASE}-test.${{ github.run_number }}"
+          fi
+
+          echo "Computed version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Restore
+        run: dotnet restore "${{ env.CSPROJ }}"
+
+      - name: Pack
+        run: |
+          dotnet pack "${{ env.CSPROJ }}" \
+            -c Release \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:VersionSuffix= \
+            -p:ContinuousIntegrationBuild=true \
+            -o ./nupkgs
+
+      - name: Push to NuGet.org
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          dotnet nuget push './nupkgs/*.nupkg' \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      - name: Push to GitHub Packages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/test'
+        run: |
+          dotnet nuget add source \
+            --username "${{ github.actor }}" \
+            --password "${{ secrets.GITHUB_TOKEN }}" \
+            --store-password-in-clear-text \
+            --name github \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          dotnet nuget push './nupkgs/*.nupkg' \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --source github \
+            --skip-duplicate
+
+      - name: Tag the release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          NEW_TAG="${TAG_PREFIX}-v${{ steps.ver.outputs.version }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "${{ env.PACKAGE_ID }} ${{ steps.ver.outputs.version }}"
+          git push origin "$NEW_TAG"

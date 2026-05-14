@@ -1,7 +1,19 @@
 <Solution>
-  <Project Path="DuckRun/NuGet - DuckRun.Core.csproj" />
-  <Project Path="NuGet - DuckRun.Dashboard/NuGet - DuckRun.Dashboard.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path=".github/workflows/publish-core.yml" />
+    <File Path=".github/workflows/publish-efcore.yml" />
+    <File Path=".github/workflows/publish-framework.yml" />
+    <File Path=".github/workflows/publish-redis.yml" />
+    <File Path=".github/workflows/README.md" />
+  </Folder>
+  <Project Path="Control Dashboard - Backend/Control Dashboard - Backend.csproj" Id="21278a08-4856-4c77-9595-e069c687fec6" />
+  <Project Path="ControlDashboard-Frontend/Control Dashboard - Frontend.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="NuGet - DuckRun.Core/NuGet - DuckRun.Core.csproj" />
   <Project Path="NuGet - DuckRun.EfCore/NuGet - DuckRun.EfCore.csproj" />
+  <Project Path="NuGet - DuckRun.Framework/NuGet - DuckRun.Framework.csproj" Id="4a2f8abc-588b-4fe3-86a7-80fdbbb642e1" />
   <Project Path="NuGet - DuckRun.Redis/NuGet - DuckRun.Redis.csproj" />
   <Project Path="Test - .NET MVC/Test - .NET MVC.csproj" />
 </Solution>

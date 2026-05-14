@@ -1,0 +1,97 @@
+using DuckRun.Core;
+using DuckRun.Core.Runs;
+using DuckRun.EfCore.Database;
+using Microsoft.EntityFrameworkCore;
+
+namespace DuckRun.EfCore.Stores;
+
+internal sealed class EfCoreJobRunStore(IDbContextFactory<DuckRunDbContext> contextFactory) : IJobRunStore
+{
+    public async Task AddAsync(JobRun run, CancellationToken ct)
+    {
+        await using var ctx = await contextFactory.CreateDbContextAsync(ct);
+        ctx.JobRuns.Add(ToRecord(run));
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(JobRun run, CancellationToken ct)
+    {
+        await using var ctx = await contextFactory.CreateDbContextAsync(ct);
+        var existing = await ctx.JobRuns.FindAsync([run.Id], ct);
+        if (existing is null)
+        {
+            ctx.JobRuns.Add(ToRecord(run));
+        }
+        else
+        {
+            ApplyUpdate(existing, run);
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<JobRun?> GetAsync(Guid runId, CancellationToken ct)
+    {
+        await using var ctx = await contextFactory.CreateDbContextAsync(ct);
+        var rec = await ctx.JobRuns.FindAsync([runId], ct);
+        return rec is null ? null : FromRecord(rec);
+    }
+
+    public async Task<IReadOnlyList<JobRun>> GetRecentForJobAsync(string jobName, int take, CancellationToken ct)
+    {
+        await using var ctx = await contextFactory.CreateDbContextAsync(ct);
+        var records = await ctx.JobRuns
+            .Where(r => r.JobName == jobName)
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(take)
+            .ToListAsync(ct);
+        return records.Select(FromRecord).ToArray();
+    }
+
+    public async Task<int> CountInFlightAsync(string jobName, CancellationToken ct)
+    {
+        await using var ctx = await contextFactory.CreateDbContextAsync(ct);
+        var runningName = JobRunState.Running.ToString();
+        return await ctx.JobRuns.CountAsync(r => r.JobName == jobName && r.State == runningName, ct);
+    }
+
+    private static JobRunRecord ToRecord(JobRun run) => new()
+    {
+        Id = run.Id,
+        JobName = run.JobName,
+        CreatedAt = run.CreatedAt.UtcDateTime,
+        StartedAt = run.StartedAt?.UtcDateTime,
+        FinishedAt = run.FinishedAt?.UtcDateTime,
+        State = run.State.ToString(),
+        TriggerSource = run.TriggerSource,
+        ErrorMessage = run.ErrorMessage,
+        ErrorStackTrace = run.ErrorStackTrace,
+    };
+
+    private static void ApplyUpdate(JobRunRecord rec, JobRun run)
+    {
+        rec.JobName = run.JobName;
+        rec.CreatedAt = run.CreatedAt.UtcDateTime;
+        rec.StartedAt = run.StartedAt?.UtcDateTime;
+        rec.FinishedAt = run.FinishedAt?.UtcDateTime;
+        rec.State = run.State.ToString();
+        rec.TriggerSource = run.TriggerSource;
+        rec.ErrorMessage = run.ErrorMessage;
+        rec.ErrorStackTrace = run.ErrorStackTrace;
+    }
+
+    private static JobRun FromRecord(JobRunRecord rec) => new()
+    {
+        Id = rec.Id,
+        JobName = rec.JobName,
+        CreatedAt = ToOffset(rec.CreatedAt),
+        StartedAt = rec.StartedAt is { } s ? ToOffset(s) : null,
+        FinishedAt = rec.FinishedAt is { } f ? ToOffset(f) : null,
+        State = Enum.TryParse<JobRunState>(rec.State, out var st) ? st : JobRunState.Pending,
+        TriggerSource = rec.TriggerSource,
+        ErrorMessage = rec.ErrorMessage,
+        ErrorStackTrace = rec.ErrorStackTrace,
+    };
+
+    private static DateTimeOffset ToOffset(DateTime dt) =>
+        new(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
+}
