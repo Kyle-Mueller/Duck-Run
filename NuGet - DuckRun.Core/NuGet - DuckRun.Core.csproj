@@ -1,9 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+
+    <AssemblyName>DuckRun.Core</AssemblyName>
+    <RootNamespace>DuckRun.Core</RootNamespace>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>DuckRun.Core</PackageId>
+    <Title>DuckRun.Core</Title>
+    <Description>Attribute-driven background job scheduler for ASP.NET Core. A clean-slate alternative to Hangfire and TickerQ with first-class cancellation, console logging, and an optional centralized control dashboard.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cronos" Version="0.10.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Dashboard\Assets\**\*" />
+  </ItemGroup>
 
 </Project>

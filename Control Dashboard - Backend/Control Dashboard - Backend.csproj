@@ -4,18 +4,14 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>Test___.NET_MVC</RootNamespace>
-    <UserSecretsId>ce9c1a36-e248-4d25-b548-12da3d6e0424</UserSecretsId>
+    <RootNamespace>Control_Dashboard___Backend</RootNamespace>
+    <UserSecretsId>963bc684-abdd-42e5-918e-ceaafc9331ef</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\NuGet - DuckRun.Core\NuGet - DuckRun.Core.csproj" />
   </ItemGroup>
 
 </Project>
