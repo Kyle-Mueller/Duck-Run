@@ -1,5 +1,6 @@
 using DuckRun.Core;
 using DuckRun.Core.Dashboard;
+using DuckRun.Core.Hosting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,16 +17,9 @@ public static class DuckRunEndpointRouteBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints);
 
         var options = endpoints.ServiceProvider.GetRequiredService<DuckRunOptions>();
-        if (!options.StandaloneDashboardEnabled)
-            return new NoOpConventionBuilder();
+        if (!options.StandaloneDashboardEnabled) return new NoOpConventionBuilder();
 
         var prefix = pathPrefix ?? options.StandaloneDashboardPath;
         return DashboardEndpoints.Map(endpoints, prefix);
-    }
-
-    private sealed class NoOpConventionBuilder : IEndpointConventionBuilder
-    {
-        public void Add(Action<EndpointBuilder> convention) { }
-        public void Finally(Action<EndpointBuilder> finalConvention) { }
     }
 }

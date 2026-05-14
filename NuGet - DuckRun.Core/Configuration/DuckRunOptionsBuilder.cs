@@ -1,4 +1,7 @@
 using System.Reflection;
+using DuckRun.Core.Reporting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DuckRun.Core;
 
@@ -9,12 +12,24 @@ public sealed class DuckRunOptionsBuilder
 {
     private readonly List<Assembly> _assemblies = new();
     private readonly List<JobDescriptor> _explicitJobs = new();
+    private readonly List<Action<Microsoft.Extensions.DependencyInjection.IServiceCollection>> _moduleSetups = new();
 
     public bool StandaloneDashboardEnabled { get; private set; }
     public string StandaloneDashboardPath { get; private set; } = "/duckrun";
     public int ConsoleEntriesPerRun { get; private set; } = 1000;
     public int RunsRetainedPerJob { get; private set; } = 200;
     public string? DashboardDsn { get; private set; }
+
+    /// <summary>Companion modules (DuckRun.EfCore, DuckRun.Redis, ...) call this to register their own services.
+    /// Module setups run after the core defaults, so they can override store registrations with <c>services.Replace(...)</c>.</summary>
+    public DuckRunOptionsBuilder AddModuleSetup(Action<Microsoft.Extensions.DependencyInjection.IServiceCollection> setup)
+    {
+        ArgumentNullException.ThrowIfNull(setup);
+        _moduleSetups.Add(setup);
+        return this;
+    }
+
+    internal IReadOnlyList<Action<Microsoft.Extensions.DependencyInjection.IServiceCollection>> ModuleSetups => _moduleSetups;
 
     /// <summary>Adds all types from the assembly to the discovery scan.</summary>
     public DuckRunOptionsBuilder AddJobsFromAssembly(Assembly assembly)
@@ -47,11 +62,25 @@ public sealed class DuckRunOptionsBuilder
         return this;
     }
 
-    /// <summary>Connects this runtime to a centralized Control Dashboard via DSN. Implemented in a later phase.</summary>
+    /// <summary>
+    /// Connects this runtime to a centralized Control Dashboard via DSN. The runtime ships runs,
+    /// console logs, and heartbeats to the dashboard over gRPC (versioned protocol <c>duckrun.protocol.v1</c>).
+    /// </summary>
+    /// <param name="dsn">DSN issued by the dashboard. Format: <c>{scheme}://{publicKey}@{host}[:{port}]/{projectId}</c>.</param>
     public DuckRunOptionsBuilder UseDashboard(string dsn)
     {
         if (string.IsNullOrWhiteSpace(dsn)) throw new ArgumentException("DSN is required.", nameof(dsn));
+        var parsed = Dsn.Parse(dsn);
         DashboardDsn = dsn;
+
+        AddModuleSetup(services =>
+        {
+            services.AddSingleton(parsed);
+            services.AddSingleton<GrpcDashboardReporter>();
+            services.Replace(ServiceDescriptor.Singleton<IDashboardReporter>(sp => sp.GetRequiredService<GrpcDashboardReporter>()));
+            services.AddHostedService(sp => sp.GetRequiredService<GrpcDashboardReporter>());
+        });
+
         return this;
     }
 

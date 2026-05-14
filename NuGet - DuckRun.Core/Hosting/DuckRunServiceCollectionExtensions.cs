@@ -1,9 +1,11 @@
 using DuckRun.Core;
-using DuckRun.Core.Internal.Control;
-using DuckRun.Core.Internal.Discovery;
-using DuckRun.Core.Internal.Execution;
-using DuckRun.Core.Internal.Logging;
-using DuckRun.Core.Internal.Scheduling;
+using DuckRun.Core.Cluster;
+using DuckRun.Core.Jobs;
+using DuckRun.Core.Logging;
+using DuckRun.Core.Operations;
+using DuckRun.Core.Reporting;
+using DuckRun.Core.Runs;
+using DuckRun.Core.Scheduler;
 using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -24,14 +26,22 @@ public static class DuckRunServiceCollectionExtensions
         var options = builder.Build();
 
         services.AddSingleton(options);
-        services.AddSingleton<InMemoryConsoleStore>();
-        services.AddSingleton<IJobRunStore, InMemoryJobRunStore>();
-        services.AddSingleton<IJobRegistry>(_ => JobScanner.Build(options));
+        services.AddSingleton<IConsoleStore>(_ => new InMemoryConsoleStore(options.ConsoleEntriesPerRun));
+        services.AddSingleton<IJobRunStore>(_ => new InMemoryJobRunStore(options.RunsRetainedPerJob));
+        services.AddSingleton<IJobRegistry>(_ => JobScanner.Build(options.AssembliesToScan, options.ExplicitJobs));
         services.AddSingleton<JobExecutor>();
+        services.AddSingleton<LocalConcurrencyTrackers>();
+        services.AddSingleton<JobSlotGate>();
+        services.AddSingleton<IClusterCoordinator, LocalClusterCoordinator>();
+        services.AddSingleton<IDashboardReporter, NullDashboardReporter>();
         services.AddSingleton<DuckRunSchedulerService>();
         services.AddHostedService(sp => sp.GetRequiredService<DuckRunSchedulerService>());
         services.AddScoped<IDuckRunConsole, ScopedDuckRunConsole>();
         services.AddSingleton<IDuckRunController, DuckRunController>();
+
+        // Modules (EfCore, Redis, ...) run after defaults so they can override store registrations.
+        foreach (var setup in builder.ModuleSetups)
+            setup(services);
 
         return services;
     }

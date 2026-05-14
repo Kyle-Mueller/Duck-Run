@@ -18,10 +18,27 @@
 
   <ItemGroup>
     <PackageReference Include="Cronos" Version="0.10.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.66.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.66.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Dashboard\Assets\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\Control Dashboard - Backend\Protos\duckrun-v1.proto"
+              Link="Protos\duckrun-v1.proto"
+              GrpcServices="Client"
+              ProtoRoot="..\Control Dashboard - Backend\Protos" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DuckRun.EfCore" />
+    <InternalsVisibleTo Include="DuckRun.Redis" />
   </ItemGroup>
 
 </Project>

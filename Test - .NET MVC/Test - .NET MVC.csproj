@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NuGet - DuckRun.Core\NuGet - DuckRun.Core.csproj" />
+    <ProjectReference Include="..\NuGet - DuckRun.EfCore\NuGet - DuckRun.EfCore.csproj" />
+    <ProjectReference Include="..\NuGet - DuckRun.Redis\NuGet - DuckRun.Redis.csproj" />
   </ItemGroup>
 
 </Project>

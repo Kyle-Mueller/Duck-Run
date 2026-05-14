@@ -1,7 +1,7 @@
 using System.Reflection;
-using DuckRun.Core.Internal.Discovery;
-using DuckRun.Core.Internal.Execution;
-using DuckRun.Core.Internal.Scheduling;
+using DuckRun.Core.Jobs;
+using DuckRun.Core.Runs;
+using DuckRun.Core.Scheduler;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;

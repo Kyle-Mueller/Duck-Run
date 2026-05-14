@@ -1,10 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>NuGet___DuckRun.EfCore</RootNamespace>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+
+    <AssemblyName>DuckRun.EfCore</AssemblyName>
+    <RootNamespace>DuckRun.EfCore</RootNamespace>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>DuckRun.EfCore</PackageId>
+    <Title>DuckRun.EfCore</Title>
+    <Description>Persistence for DuckRun.Core: job run history, console logs, and schedules backed by Entity Framework Core. Supports SQL Server, PostgreSQL, CockroachDB (via Npgsql), and SQLite.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NuGet - DuckRun.Core\NuGet - DuckRun.Core.csproj" />
+  </ItemGroup>
 
 </Project>
