@@ -1,7 +1,8 @@
 <Solution>
-  <Project Path="DuckRun/NuGet - DuckRun.Core.csproj" />
+  <Project Path="NuGet - DuckRun.Core/NuGet - DuckRun.Core.csproj" />
   <Project Path="NuGet - DuckRun.Dashboard/NuGet - DuckRun.Dashboard.csproj" />
   <Project Path="NuGet - DuckRun.EfCore/NuGet - DuckRun.EfCore.csproj" />
+  <Project Path="NuGet - DuckRun.Framework/NuGet - DuckRun.Framework.csproj" Id="4a2f8abc-588b-4fe3-86a7-80fdbbb642e1" />
   <Project Path="NuGet - DuckRun.Redis/NuGet - DuckRun.Redis.csproj" />
   <Project Path="Test - .NET MVC/Test - .NET MVC.csproj" />
 </Solution>
