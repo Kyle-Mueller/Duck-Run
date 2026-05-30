@@ -30,29 +30,41 @@
   stroke: var(--border-bright);
   stroke-width: 1.25;
   stroke-dasharray: 2 4;
+  transition: opacity 0.4s var(--ease-out);
 }
-.meshDot { fill: var(--border-bright); }
+.meshDot { fill: var(--border-bright); transition: opacity 0.4s var(--ease-out); }
 
 /* nodes */
-.node { cursor: pointer; outline: none; }
+.node { cursor: pointer; outline: none; transition: opacity 0.45s var(--ease-out); }
+.nodeOffline { opacity: 0.4; }
 .card {
   fill: var(--bg-surface);
   stroke: var(--border-bright);
   stroke-width: 1;
-  transition: stroke 0.2s var(--ease-out);
+  transition: stroke 0.25s var(--ease-out), fill 0.25s var(--ease-out);
 }
 .cardLeader {
   fill: var(--bg-raised);
   stroke: var(--brand-border);
   stroke-width: 1.4;
-  transition: stroke 0.2s var(--ease-out);
+  transition: stroke 0.25s var(--ease-out), fill 0.25s var(--ease-out);
 }
-.node:hover .card { stroke: var(--text-dim); }
+.cardOffline {
+  fill: var(--bg-surface);
+  stroke: var(--border-md);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  transition: stroke 0.25s var(--ease-out), fill 0.25s var(--ease-out);
+}
+.node:hover .card,
+.node:hover .cardOffline { stroke: var(--text-dim); }
 .node:focus-visible .card,
-.node:focus-visible .cardLeader { stroke: var(--brand); }
+.node:focus-visible .cardLeader,
+.node:focus-visible .cardOffline { stroke: var(--brand); }
 
-.ledOn { fill: var(--brand); }
+.ledOn { fill: var(--brand); transition: fill 0.3s var(--ease-out); }
 .ledOff { fill: none; stroke: var(--border-bright); stroke-width: 1.5; }
+.ledDown { fill: var(--border-bright); transition: fill 0.3s var(--ease-out); }
 .ledGlow {
   fill: var(--brand);
   transform-box: fill-box;

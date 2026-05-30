@@ -8,18 +8,31 @@
 .bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.7rem;
   padding: 0.55rem 0.9rem;
   border-bottom: 1px solid var(--border-dark);
   background: var(--bg-dark-raised);
 }
 
+.dots {
+  display: inline-flex;
+  gap: 5px;
+  flex: none;
+}
+.dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(240, 238, 230, 0.16);
+}
+
 .label {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-dim-on-dark);
+  margin-right: auto;
 }
 
 .copy {
@@ -30,6 +43,7 @@
   border: 1px solid var(--border-dark);
   border-radius: var(--radius-sm);
   padding: 0.22rem 0.6rem;
+  flex: none;
   transition: color 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
 }
 .copy:hover {
@@ -37,22 +51,45 @@
   border-color: var(--brand-border);
 }
 
-.pre {
-  margin: 0;
-  padding: 1.05rem 1.15rem;
+/* code surface */
+.scroll {
   overflow-x: auto;
+  padding: 0.85rem 0;
+}
+.codeArea {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
-  line-height: 1.75;
-  color: var(--text-on-dark);
-  tab-size: 4;
+  line-height: 1.72;
+  width: max-content;
+  min-width: 100%;
 }
-
-.line {
-  display: inline;
+.row {
+  display: flex;
+  min-height: 1.72em;
+}
+.ln {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: 3.1em;
+  padding: 0 1.05em 0 1.1rem;
+  text-align: right;
+  color: rgba(240, 238, 230, 0.26);
+  background: var(--bg-dark);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.code {
   white-space: pre;
+  padding-right: 1.3rem;
+  color: var(--text-on-dark);
 }
 
+/* tokens — warm + sage, coral reserved for the [Attribute] */
 .plain   { color: var(--text-on-dark); }
-.comment { color: rgba(240, 238, 230, 0.40); font-style: normal; }
-.string  { color: #B6C77F; }
+.comment { color: rgba(240, 238, 230, 0.40); }
+.string  { color: #A8C68A; }
+.keyword { color: #D49A6A; }
+.type    { color: #8FB6AD; }
+.number  { color: #C9A879; }
+.attr    { color: var(--brand-vivid); }

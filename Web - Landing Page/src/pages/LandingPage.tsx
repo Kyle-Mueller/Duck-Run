@@ -1,13 +1,27 @@
 import { Link } from 'react-router-dom';
 import CodeBlock from '../components/CodeBlock';
 import DuckScene from '../components/DuckScene';
+import Avatar from '../components/Avatar';
 import { SITE, PACKAGES } from '../site';
 import styles from './LandingPage.module.css';
+
+const DEVS = [
+  {
+    name: 'Kyle Müller',
+    initials: 'KM',
+    role: 'Creator & maintainer',
+    bio: "I build and maintain DuckRun. It started as the scheduler I wanted and couldn't find, so the roadmap is mostly whatever annoys me next. If something is broken or missing, the fastest path is an issue with my name on it.",
+    url: 'https://kyle-mueller.com/',
+    urlLabel: 'kyle-mueller.com',
+    // Drop a path here (e.g. an image placed in /public) to replace the monogram.
+    photo: null as string | null,
+  },
+];
 
 const STATS = [
   { n: '1', l: 'attribute to learn', s: '[DuckRunJob]' },
   { n: '5', l: 'runtimes, one source', s: 'net6 → net10' },
-  { n: '4', l: 'durable stores', s: 'SQL · PG · Cockroach · SQLite' },
+  { n: '3', l: 'durable stores', s: 'SQL · Postgres · Cockroach' },
   { n: '26', l: 'files linked into net48', s: 'same job API' },
   { n: '0', l: 'migrations to run', s: 'schema on boot' },
 ];
@@ -119,27 +133,45 @@ export default function LandingPage() {
 
           <div className={styles.steps}>
             <div className={styles.step}>
-              <div className={styles.stepHead}>
+              <div className={styles.stepAside}>
                 <span className={styles.stepNo}>01</span>
                 <h3 className={styles.stepTitle}>Install the package</h3>
+                <p className={styles.stepDesc}>
+                  Grab <code className="icode">DuckRun.Core</code> from NuGet. It is the only package
+                  you actually need.
+                </p>
               </div>
-              <CodeBlock lang="bash" label="terminal" code={`dotnet add package DuckRun.Core`} />
+              <div className={styles.stepCode}>
+                <CodeBlock lang="bash" label="terminal" code={`dotnet add package DuckRun.Core`} />
+              </div>
             </div>
 
             <div className={styles.step}>
-              <div className={styles.stepHead}>
+              <div className={styles.stepAside}>
                 <span className={styles.stepNo}>02</span>
                 <h3 className={styles.stepTitle}>Register it</h3>
+                <p className={styles.stepDesc}>
+                  One call in <code className="icode">Program.cs</code> wires up discovery and the
+                  dashboard. Every <code className="icode">Use…</code> is opt-in.
+                </p>
               </div>
-              <CodeBlock lang="csharp" label="Program.cs" code={PROGRAM_CS} />
+              <div className={styles.stepCode}>
+                <CodeBlock lang="csharp" label="Program.cs" code={PROGRAM_CS} />
+              </div>
             </div>
 
             <div className={styles.step}>
-              <div className={styles.stepHead}>
+              <div className={styles.stepAside}>
                 <span className={styles.stepNo}>03</span>
                 <h3 className={styles.stepTitle}>Tag a method</h3>
+                <p className={styles.stepDesc}>
+                  Put <code className="icode">[DuckRunJob]</code> on a method, give it a cron string,
+                  and you have a job.
+                </p>
               </div>
-              <CodeBlock lang="csharp" label="ReportingJobs.cs" code={JOB_CS} />
+              <div className={styles.stepCode}>
+                <CodeBlock lang="csharp" label="ReportingJobs.cs" code={JOB_CS} />
+              </div>
             </div>
           </div>
 
@@ -274,8 +306,8 @@ export default function LandingPage() {
             <p className="eyebrow">On NuGet</p>
             <h2 className={styles.h2}>Four packages. Take what you need.</h2>
             <p className={styles.sub}>
-              Core does the scheduling. The other three are opt-in — add a database, add a cluster, or
-              drop the whole thing into classic ASP.NET.
+              Two independent bases — Core for modern .NET, Framework for .NET 4.8 — plus EfCore and
+              Redis as extensions on top. Take only what you need.
             </p>
           </div>
 
@@ -290,7 +322,14 @@ export default function LandingPage() {
               >
                 <span className={styles.pkgIdx}>{String(i + 1).padStart(2, '0')}</span>
                 <div className={styles.pkgMain}>
-                  <h3 className={styles.pkgName}>{p.id}</h3>
+                  <div className={styles.pkgHead}>
+                    <h3 className={styles.pkgName}>{p.id}</h3>
+                    {p.extends.length === 0 ? (
+                      <span className={styles.pkgBase}>standalone base</span>
+                    ) : (
+                      <span className={styles.pkgExt}>↳ extends {p.extends.join(' + ')}</span>
+                    )}
+                  </div>
                   <p className={styles.pkgBlurb}>{p.blurb}</p>
                 </div>
                 <div className={styles.pkgSide}>
@@ -369,7 +408,6 @@ export default function LandingPage() {
                 <span className="tag">SQL Server</span>
                 <span className="tag">PostgreSQL</span>
                 <span className="tag">CockroachDB</span>
-                <span className="tag">SQLite</span>
               </div>
             </div>
 
@@ -402,14 +440,22 @@ export default function LandingPage() {
         <div className={`container ${styles.dashGrid}`}>
           <div className={styles.dashText}>
             <p className="eyebrow" style={{ color: 'var(--text-muted-on-dark)' }}>
-              The control plane
+              The Control Server
             </p>
             <h2 className={styles.dashH2}>A dashboard you can actually read.</h2>
             <p className={styles.dashBody}>
-              One small container — backend, SPA and database in a single image. Each app you
-              instrument becomes a project with its own DSN. You get live runs, per-run console output,
-              cluster topology, and a button that triggers a job over the wire.
+              If you have run Sentry, you already know the shape: projects, teams, and one screen that
+              sees everything. The Control Server is that idea aimed at scheduled work instead of
+              exceptions. Each app you instrument becomes a project with its own DSN — group them by
+              team and tenant, then watch live runs, read a per-run console, see cluster topology, and
+              trigger a job over the wire.
             </p>
+            <div className={styles.dashTags}>
+              <span className={styles.dashTag}>Projects</span>
+              <span className={styles.dashTag}>Teams</span>
+              <span className={styles.dashTag}>Tenants</span>
+              <span className={styles.dashTag}>Per-project DSNs</span>
+            </div>
             <div className={styles.dashCtas}>
               <Link to="/docs#dashboard" className="btn btn--onDark">
                 Run the dashboard
@@ -423,7 +469,7 @@ export default function LandingPage() {
           <div className={styles.dashCard}>
             <div className={styles.dashCardBar}>
               <span className="statusDot" />
-              <span>dashboard · project 42 · 3 nodes</span>
+              <span>acme-prod · team platform · 3 nodes</span>
             </div>
             <div className={styles.dsnRow}>
               <span className={styles.dsnLabel}>DSN</span>
@@ -445,6 +491,38 @@ export default function LandingPage() {
                 <span className={styles.logOk}>✓</span> cleanup-temp · 84 ms · node-2
               </li>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* ── About the dev ────────────────────────────────────── */}
+      <section className={styles.aboutWrap} id="about">
+        <div className="container">
+          <div className={styles.sectionHead}>
+            <p className="eyebrow">Who&rsquo;s behind it</p>
+            <h2 className={styles.h2}>About the dev.</h2>
+            <p className={styles.sub}>
+              DuckRun is built and maintained by one person. That is both a feature and a warning —
+              decisions are fast, and the bus factor is one.
+            </p>
+          </div>
+
+          <div className={styles.devs}>
+            {DEVS.map((d) => (
+              <article className={styles.devCard} key={d.name}>
+                <Avatar name={d.name} initials={d.initials} photo={d.photo} size={92} />
+                <div className={styles.devMain}>
+                  <div className={styles.devHead}>
+                    <h3 className={styles.devName}>{d.name}</h3>
+                    <span className={styles.devRole}>{d.role}</span>
+                  </div>
+                  <p className={styles.devBio}>{d.bio}</p>
+                  <a href={d.url} target="_blank" rel="noreferrer" className={styles.devLink}>
+                    {d.urlLabel} ↗
+                  </a>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
