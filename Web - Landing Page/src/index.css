@@ -1,0 +1,239 @@
+/* ═══════════════════════════════════════════════════════════════
+   DUCKRUN — Editorial Cream
+   Cream + terracotta + ink · Space Grotesk + Geist Mono
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Surfaces — warm ivory ─────────────────────────────────── */
+  --bg:             #F0EEE6;
+  --bg-surface:     #F7F4EC;
+  --bg-raised:      #FAF9F5;
+  --bg-hover:       #E8E3D4;
+  --bg-input:       #FFFFFF;
+  --bg-dark:        #141413;
+  --bg-dark-raised: #1F1E1C;
+
+  /* ── Typography — deep ink ─────────────────────────────────── */
+  --text:                #141413;
+  --text-muted:          #5C5A52;
+  --text-dim:            #8E8B82;
+  --text-on-dark:        rgba(240, 238, 230, 0.92);
+  --text-muted-on-dark:  rgba(240, 238, 230, 0.58);
+  --text-dim-on-dark:    rgba(240, 238, 230, 0.40);
+
+  /* ── Brand — terracotta, used sparingly ────────────────────── */
+  --brand:        #CC785C;
+  --brand-hover:  #B8654A;
+  --brand-active: #A45439;
+  --brand-vivid:  #D97757;
+  --brand-light:  #F5E9E0;
+  --brand-dim:    rgba(204, 120, 92, 0.08);
+  --brand-border: rgba(204, 120, 92, 0.24);
+  --brand-glow:   rgba(204, 120, 92, 0.18);
+
+  /* ── Borders — quiet warm hairlines ────────────────────────── */
+  --border:        #E4DFD0;
+  --border-md:     #D1C9B7;
+  --border-bright: #B4AA96;
+  --border-dark:   rgba(240, 238, 230, 0.14);
+
+  /* ── Status ─────────────────────────────────────────────────── */
+  --green:  #4D7C0F;
+  --red:    #B91C1C;
+  --yellow: #B45309;
+  --blue:   #1D4ED8;
+
+  /* ── Shadows — almost imperceptible ────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(20, 20, 19, 0.04);
+  --shadow:    0 1px 3px rgba(20, 20, 19, 0.05);
+  --shadow-md: 0 4px 12px rgba(20, 20, 19, 0.06);
+  --shadow-lg: 0 12px 32px rgba(20, 20, 19, 0.08);
+  --shadow-xl: 0 24px 64px rgba(20, 20, 19, 0.10);
+
+  /* ── Radii — sharp & editorial ─────────────────────────────── */
+  --radius-sm:  2px;
+  --radius:     4px;
+  --radius-lg:  8px;
+  --radius-xl:  12px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  --max-w:      1240px;
+  --max-w-text: 680px;
+  --nav-h:      68px;
+
+  /* ── Transitions ────────────────────────────────────────────── */
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Font stacks ────────────────────────────────────────────── */
+  --font-heading: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body:    'Geist Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --font-mono:    'Geist Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+/* ── Reset + Base ────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 24px);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  font-feature-settings: 'zero', 'ss02';
+}
+
+h1, h2 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+img, svg, video { max-width: 100%; display: block; }
+
+::selection {
+  background: var(--brand);
+  color: #fff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-md) transparent;
+}
+
+/* ── Global primitives ───────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding-inline: clamp(20px, 4vw, 48px);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding: 0.72rem 1.2rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out),
+    border-color 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+}
+.btn:active { transform: translateY(1px); }
+
+.btn--primary { background: var(--text); color: var(--bg); }
+.btn--primary:hover { background: var(--brand); color: #fff; }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-md);
+}
+.btn--ghost:hover { border-color: var(--text); background: var(--bg-surface); }
+
+.btn--onDark {
+  background: var(--bg);
+  color: var(--text);
+}
+.btn--onDark:hover { background: var(--brand-vivid); color: #fff; }
+
+.btn--ghostDark {
+  background: transparent;
+  color: var(--text-on-dark);
+  border-color: var(--border-dark);
+}
+.btn--ghostDark:hover { border-color: var(--text-on-dark); }
+
+/* Inline code */
+.icode {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.12em 0.42em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Small mono tag/pill */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-full);
+  padding: 0.2em 0.7em;
+  white-space: nowrap;
+}
+
+/* Live status dot */
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2.4s var(--ease-out) infinite;
+  flex: none;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(77, 124, 15, 0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(77, 124, 15, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(77, 124, 15, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
