@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Landing Page": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "http://localhost:54129"
+    }
+  },
+  "$schema": "https://json.schemastore.org/launchsettings.json"
+}

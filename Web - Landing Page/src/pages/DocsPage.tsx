@@ -24,7 +24,7 @@ const NAV = [
     group: 'Dashboards',
     items: [
       { id: 'standalone', label: 'Embedded /duckrun' },
-      { id: 'dashboard', label: 'Control plane & DSN' },
+      { id: 'dashboard', label: 'Control Server & DSN' },
     ],
   },
   {
@@ -501,10 +501,12 @@ app.MapDuckRunDashboard();`}
           {/* ── Control plane ────────────────────────────────── */}
           <section id="dashboard" className={styles.sec}>
             <p className={styles.kicker}>Dashboards</p>
-            <h2>Control plane &amp; DSN</h2>
+            <h2>Control Server &amp; DSN</h2>
             <p>
-              The control dashboard is a separate container that aggregates every instrumented app.
-              Each app reports to it over gRPC, addressed by a <strong>DSN</strong>:
+              The Control Server is a separate container that aggregates every instrumented app. The
+              model mirrors Sentry — <strong>projects</strong> grouped by <strong>teams</strong> and
+              tenants — but tracks scheduled jobs instead of exceptions. Each app reports to it over
+              gRPC, addressed by a <strong>DSN</strong>:
             </p>
             <CodeBlock
               lang="text"
@@ -575,15 +577,13 @@ https://pk_live_8f3a@dashboard.example.com/42`}
                 <tr><td><code className="icode">SqlServer</code></td><td>SQL Server / Azure SQL.</td></tr>
                 <tr><td><code className="icode">Postgres</code></td><td>PostgreSQL via Npgsql.</td></tr>
                 <tr><td><code className="icode">CockroachDb</code></td><td>CockroachDB, wire-compatible via Npgsql.</td></tr>
-                <tr><td><code className="icode">Sqlite</code></td><td>Local dev; great for a single node.</td></tr>
               </tbody>
             </table>
             <p>
               There is <strong>no migrations step</strong>. On first boot the schema is created
-              idempotently with <code className="icode">EnsureCreatedAsync</code> — a{' '}
-              <code className="icode">DuckRun</code> schema where the provider supports it, and{' '}
-              <code className="icode">DuckRun_</code>-prefixed tables on SQLite. Timestamps are stored as
-              UTC <code className="icode">DateTime</code> (not <code className="icode">DateTimeOffset</code>)
+              idempotently with <code className="icode">EnsureCreatedAsync</code> into a{' '}
+              <code className="icode">DuckRun</code> schema. Timestamps are stored as UTC{' '}
+              <code className="icode">DateTime</code> (not <code className="icode">DateTimeOffset</code>)
               so ordering is stable across providers, and console writes are batched off a channel.
             </p>
           </section>
