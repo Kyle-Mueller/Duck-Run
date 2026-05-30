@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <style>
+    .tile { fill: #141413; }
+    .duck { fill: #F0EEE6; }
+    .bill { fill: #CC785C; }
+    .eye  { fill: #141413; }
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #F0EEE6; }
+      .duck { fill: #141413; }
+      .eye  { fill: #F0EEE6; }
+    }
+  </style>
+  <rect class="tile" width="32" height="32" rx="7" />
+  <circle class="duck" cx="15" cy="15" r="6.4" />
+  <path class="bill" d="M20.2 13.4h5.1c1 0 1.6 1 1.1 1.9l-.5.9c-.2.4-.6.6-1 .6h-4.7z" />
+  <circle class="eye" cx="13.6" cy="13.4" r="1.2" />
+</svg>

@@ -1,0 +1,3 @@
+# Cloudflare Pages — SPA fallback so client-side routes (e.g. /docs) resolve
+# on a hard refresh or deep link.
+/*    /index.html    200
