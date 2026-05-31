@@ -59,11 +59,6 @@ internal sealed class EfCoreConsoleStore : IConsoleStore, IDisposable
             r.Message)).ToArray();
     }
 
-    public void Drop(Guid runId)
-    {
-        // No-op: durable rows stay in the DB. Retention is handled separately.
-    }
-
     private async Task FlushLoopAsync()
     {
         var batch = new List<ConsoleLogEntry>(_options.ConsoleFlushBatchSize);
