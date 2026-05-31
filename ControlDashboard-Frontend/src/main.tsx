@@ -9,6 +9,8 @@ import { Layout } from './shell/Layout';
 
 import { LoginPage } from './pages/LoginPage';
 import { GlobalOverviewPage } from './pages/GlobalOverviewPage';
+import { GroupsListPage } from './pages/GroupsListPage';
+import { GroupDetailPage } from './pages/GroupDetailPage';
 import { ProjectsListPage } from './pages/ProjectsListPage';
 import { ProjectOverviewPage } from './pages/ProjectOverviewPage';
 import { JobsPage } from './pages/JobsPage';
@@ -32,6 +34,8 @@ createRoot(document.getElementById('root')!).render(
           <Route element={<AuthGate><Layout /></AuthGate>}>
             <Route index element={<Navigate to="/overview" replace />} />
             <Route path="/overview" element={<GlobalOverviewPage />} />
+            <Route path="/groups" element={<GroupsListPage />} />
+            <Route path="/groups/:id" element={<GroupDetailPage />} />
             <Route path="/projects" element={<ProjectsListPage />} />
             <Route path="/projects/:id" element={<ProjectOverviewPage />} />
             <Route path="/projects/:id/jobs" element={<JobsPage />} />
