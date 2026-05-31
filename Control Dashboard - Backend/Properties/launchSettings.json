@@ -1,5 +1,14 @@
 {
   "profiles": {
+    "Control Server": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:8090",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true
+    },
     "http": {
       "commandName": "Project",
       "environmentVariables": {
