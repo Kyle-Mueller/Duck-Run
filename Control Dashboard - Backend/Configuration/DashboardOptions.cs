@@ -19,8 +19,8 @@ public sealed class DashboardOptions
 
 public sealed class DbOptions
 {
-    public DuckRunProvider Provider { get; set; } = DuckRunProvider.Sqlite;
-    public string ConnectionString { get; set; } = "Data Source=dashboard.db";
+    public DuckRunProvider Provider { get; set; } = DuckRunProvider.Postgres;
+    public string ConnectionString { get; set; } = "Host=localhost;Port=5432;Database=duckrun_dashboard;Username=postgres;Password=postgres";
 }
 
 public sealed class AuthOptions
