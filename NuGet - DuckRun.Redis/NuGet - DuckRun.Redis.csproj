@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net48;net10.0</TargetFrameworks>
+    <TargetFrameworks>net48;net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,28 +11,36 @@
 
     <IsPackable>true</IsPackable>
     <PackageId>DuckRun.Redis</PackageId>
+    <Version Condition="'$(DuckRunRedisVersion)' != ''">$(DuckRunRedisVersion)</Version>
     <Title>DuckRun.Redis</Title>
-    <Description>Multi-instance orchestration for DuckRun: Redis-backed leader election and cluster-wide concurrency limits. One package, two builds — net48 (for DuckRun.Framework) and net10 (for DuckRun.Core).</Description>
+    <Description>Multi-instance orchestration for DuckRun: Redis-backed leader election and cluster-wide concurrency limits. net48 (for DuckRun.Framework) and net6 through net10 (for DuckRun.Core).</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
-    <PackageReference Include="MessagePack" Version="2.5.187" />
+    <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
+    <PackageReference Include="MessagePack" Version="3.1.6" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <ItemGroup Condition="'$(TargetFramework)' != 'net48'">
     <ProjectReference Include="..\NuGet - DuckRun.Core\NuGet - DuckRun.Core.csproj" />
+  </ItemGroup>
+
+  <!-- net6 lacks the BCL attributes behind the `required` keyword (added in net7). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="PolySharp" Version="1.16.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <ProjectReference Include="..\NuGet - DuckRun.Framework\NuGet - DuckRun.Framework.csproj" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.8" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="PolySharp" Version="1.14.1">
+    <PackageReference Include="PolySharp" Version="1.16.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>

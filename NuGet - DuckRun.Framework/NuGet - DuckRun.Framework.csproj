@@ -11,18 +11,19 @@
 
     <IsPackable>true</IsPackable>
     <PackageId>DuckRun.Framework</PackageId>
+    <Version Condition="'$(DuckRunFrameworkVersion)' != ''">$(DuckRunFrameworkVersion)</Version>
     <Title>DuckRun.Framework</Title>
     <Description>Attribute-driven background job scheduler for classic ASP.NET on .NET Framework 4.8. Same job-author API as DuckRun.Core (use [DuckRunJob] on methods, inject IDuckRunConsole and CancellationToken). Start via DuckRunHost.Start(...) in Global.asax.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Cronos" Version="0.13.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="PolySharp" Version="1.15.0">
+    <PackageReference Include="PolySharp" Version="1.16.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
