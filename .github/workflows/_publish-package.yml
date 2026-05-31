@@ -1,0 +1,106 @@
+name: _publish-package
+
+# Reusable publish job, called once per package from publish.yml.
+# Versions are computed centrally by the orchestrator and passed in, so a package's
+# own version and the dependency floors it emits are independent:
+#   own_version   -> the version THIS package is published as (and tagged on master)
+#   version_props -> -p:DuckRun*Version=... for every package, so ProjectReference
+#                    dependencies are pinned to the versions that actually exist on the
+#                    feed instead of inheriting this package's own version.
+# Feed is chosen by branch:
+#   refs/heads/master -> nuget.org (stable) + git tag
+#   refs/heads/test    -> apiint.nugettest.org (prerelease)
+
+on:
+  workflow_call:
+    inputs:
+      package_id:
+        description: 'NuGet package id, e.g. DuckRun.Core'
+        required: true
+        type: string
+      tag_prefix:
+        description: 'Git tag namespace for this package, e.g. core (-> core-v1.2.3)'
+        required: true
+        type: string
+      csproj:
+        description: 'Path to the packable csproj'
+        required: true
+        type: string
+      own_version:
+        description: 'Version this package is published as'
+        required: true
+        type: string
+      version_props:
+        description: 'Full -p:DuckRun*Version=... bundle for dependency pinning'
+        required: true
+        type: string
+    secrets:
+      NUGET_API_KEY:
+        required: false
+      NUGET_TEST_API_KEY:
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the version tag on master
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so we can read and push tags
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            7.0.x
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        shell: bash
+        env:
+          CSPROJ: ${{ inputs.csproj }}
+        run: dotnet restore "$CSPROJ"
+
+      - name: Pack
+        shell: bash
+        env:
+          CSPROJ: ${{ inputs.csproj }}
+          VERSION_PROPS: ${{ inputs.version_props }}
+        # $VERSION_PROPS is intentionally unquoted so it splits into separate -p: args.
+        run: dotnet pack "$CSPROJ" -c Release $VERSION_PROPS -p:VersionSuffix= -p:ContinuousIntegrationBuild=true -o ./nupkgs
+
+      - name: Push to NuGet.org (production)
+        if: github.ref == 'refs/heads/master'
+        shell: bash
+        run: dotnet nuget push './nupkgs/*.nupkg' --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Push to nugettest.org (test)
+        if: github.ref == 'refs/heads/test'
+        shell: bash
+        run: dotnet nuget push './nupkgs/*.nupkg' --api-key "${{ secrets.NUGET_TEST_API_KEY }}" --source https://apiint.nugettest.org/v3/index.json --skip-duplicate
+
+      - name: Tag the release
+        if: github.ref == 'refs/heads/master'
+        shell: bash
+        env:
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
+          PACKAGE_ID: ${{ inputs.package_id }}
+          VERSION: ${{ inputs.own_version }}
+        run: |
+          set -euo pipefail
+          NEW_TAG="${TAG_PREFIX}-v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${NEW_TAG}" >/dev/null; then
+            echo "Tag ${NEW_TAG} already exists — skipping."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "${PACKAGE_ID} ${VERSION}"
+          git push origin "$NEW_TAG"
