@@ -67,7 +67,8 @@ internal sealed class DuckRunInstance
     {
         var registry = JobScanner.Build(options.AssembliesToScan, options.ExplicitJobs);
         var runStore = new InMemoryJobRunStore(options.RunsRetainedPerJob);
-        var consoleStore = new InMemoryConsoleStore(options.ConsoleEntriesPerRun);
+        var consoleMaxRuns = Math.Max(1000, options.RunsRetainedPerJob * Math.Max(1, registry.All.Count));
+        var consoleStore = new InMemoryConsoleStore(options.ConsoleEntriesPerRun, consoleMaxRuns);
 
         var ctx = new DuckRunFrameworkContext();
         foreach (var setup in options.ModuleSetups) setup(ctx);

@@ -90,6 +90,7 @@ function Sidebar({ projectId }: { projectId?: string }) {
     <aside className="w-60 border-r hairline shrink-0 py-6 px-4">
       <NavSection>
         <NavItem to="/overview" end>Overview</NavItem>
+        <NavItem to="/groups">Groups</NavItem>
         <NavItem to="/projects">Projects</NavItem>
       </NavSection>
     </aside>

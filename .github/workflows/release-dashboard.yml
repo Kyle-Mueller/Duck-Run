@@ -1,0 +1,206 @@
+name: Release Control Dashboard
+
+# Fires when master moves (i.e. a test -> master merge) and cuts a DRAFT GitHub
+# Release with ready-to-run downloads for IIS, Docker Compose and Kubernetes,
+# plus a container image pushed to GHCR. Nothing is public until you open the
+# draft and click Publish.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'Control Dashboard - Backend/**'
+      - 'ControlDashboard-Frontend/**'
+      - 'NuGet - DuckRun.EfCore/**'   # dashboard references EfCore...
+      - 'NuGet - DuckRun.Core/**'      # ...which links source from Core
+      - 'deploy/**'
+      - '.github/workflows/release-dashboard.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Explicit version (e.g. 1.2.0). Blank = auto-increment the patch from the latest dashboard-v* tag (or 0.1.0 if none exists yet).'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # create the draft release + (on publish) the dashboard-v* tag
+  packages: write   # push the container image to GHCR
+
+concurrency:
+  group: release-dashboard
+  cancel-in-progress: false
+
+env:
+  PROJECT: Control Dashboard - Backend/Control Dashboard - Backend.csproj
+  FRONTEND_DIR: ControlDashboard-Frontend
+  ASSEMBLY: DuckRun.Dashboard
+  TAG_PREFIX: dashboard
+  IMAGE_NAME: duckrun-dashboard
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so we can read dashboard-v* tags
+
+      - name: Guard — releases only from master
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::Release Control Dashboard only runs from master. Current ref: ${GITHUB_REF}"
+          exit 1
+
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          LATEST_TAG="$(git tag --list "${TAG_PREFIX}-v*" --sort=-v:refname | head -n 1 || true)"
+          LATEST_VERSION="${LATEST_TAG#${TAG_PREFIX}-v}"
+          echo "Latest tag: ${LATEST_TAG:-<none>}"
+
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          if [ -n "${INPUT_VERSION}" ]; then
+            VERSION="${INPUT_VERSION}"
+          elif [ -z "${LATEST_TAG}" ]; then
+            VERSION="0.1.0"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST_VERSION}"
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+
+          echo "Release version: ${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG_PREFIX}-v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve GHCR image ref (lowercase)
+        id: img
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "ref=ghcr.io/${OWNER}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
+
+      - name: Build frontend (SPA → backend wwwroot)
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish backend — framework-dependent (portable DLLs for IIS + the container)
+        run: |
+          dotnet publish "${PROJECT}" \
+            -c Release \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:VersionSuffix= \
+            -p:ContinuousIntegrationBuild=true \
+            -o artifacts/iis-framework-dependent
+
+      - name: Publish backend — self-contained win-x64 (no .NET install needed)
+        run: |
+          dotnet publish "${PROJECT}" \
+            -c Release \
+            -r win-x64 \
+            --self-contained true \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -p:VersionSuffix= \
+            -p:ContinuousIntegrationBuild=true \
+            -o artifacts/iis-selfcontained-win-x64
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push container image
+        uses: docker/build-push-action@v6
+        with:
+          # Context is the published app, so the image is the same bits as the
+          # framework-dependent IIS download.
+          context: artifacts/iis-framework-dependent
+          file: deploy/dashboard.Dockerfile
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.img.outputs.ref }}:${{ steps.ver.outputs.version }}
+            ${{ steps.img.outputs.ref }}:latest
+
+      - name: Assemble release bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          IMAGE_REF="${{ steps.img.outputs.ref }}:${VERSION}"
+          mkdir -p artifacts/release
+
+          # --- IIS: framework-dependent ("pure DLLs") ---
+          cp deploy/iis/README.md artifacts/iis-framework-dependent/HOSTING-IIS.md
+          (cd artifacts/iis-framework-dependent && zip -qr "${GITHUB_WORKSPACE}/artifacts/release/${IMAGE_NAME}-${VERSION}-iis-framework-dependent.zip" .)
+
+          # --- IIS: self-contained win-x64 ---
+          cp deploy/iis/README.md artifacts/iis-selfcontained-win-x64/HOSTING-IIS.md
+          (cd artifacts/iis-selfcontained-win-x64 && zip -qr "${GITHUB_WORKSPACE}/artifacts/release/${IMAGE_NAME}-${VERSION}-iis-selfcontained-win-x64.zip" .)
+
+          # --- Docker Compose (image ref pinned to this version) ---
+          rm -rf staging-compose && mkdir -p staging-compose
+          cp deploy/docker-compose/docker-compose.yml deploy/docker-compose/.env.example deploy/docker-compose/README.md staging-compose/
+          sed -i "s#__IMAGE_REF__#${IMAGE_REF}#g" staging-compose/docker-compose.yml
+          (cd staging-compose && zip -qr "${GITHUB_WORKSPACE}/artifacts/release/${IMAGE_NAME}-${VERSION}-docker-compose.zip" .)
+
+          # --- Kubernetes (image ref pinned to this version) ---
+          rm -rf staging-k8s && mkdir -p staging-k8s
+          cp deploy/kubernetes/*.yaml deploy/kubernetes/README.md staging-k8s/
+          sed -i "s#__IMAGE_REF__#${IMAGE_REF}#g" staging-k8s/duckrun-dashboard.yaml
+          (cd staging-k8s && zip -qr "${GITHUB_WORKSPACE}/artifacts/release/${IMAGE_NAME}-${VERSION}-kubernetes.zip" .)
+
+          # --- Checksums ---
+          (cd artifacts/release && sha256sum *.zip > SHA256SUMS.txt)
+          ls -la artifacts/release
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp deploy/release-notes.template.md artifacts/release-notes.md
+          sed -i "s#__VERSION__#${{ steps.ver.outputs.version }}#g; s#__IMAGE_REF__#${{ steps.img.outputs.ref }}:${{ steps.ver.outputs.version }}#g" artifacts/release-notes.md
+
+      - name: Create or refresh the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.tag }}"
+          # Re-runs for the same version replace the existing DRAFT (a published
+          # release for this tag is never a draft, so it is left untouched).
+          if [ "$(gh release view "${TAG}" --json isDraft -q .isDraft 2>/dev/null || true)" = "true" ]; then
+            echo "Replacing existing draft for ${TAG}"
+            gh release delete "${TAG}" --yes --cleanup-tag
+          fi
+          gh release create "${TAG}" \
+            --draft \
+            --target "${GITHUB_SHA}" \
+            --title "Control Dashboard v${{ steps.ver.outputs.version }}" \
+            --notes-file artifacts/release-notes.md \
+            artifacts/release/*.zip \
+            artifacts/release/SHA256SUMS.txt
+          echo "Draft release ${TAG} ready — open it on the Releases page and click Publish."

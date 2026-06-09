@@ -1,32 +1,90 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net48;net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
 
     <AssemblyName>DuckRun.EfCore</AssemblyName>
     <RootNamespace>DuckRun.EfCore</RootNamespace>
 
     <IsPackable>true</IsPackable>
     <PackageId>DuckRun.EfCore</PackageId>
+    <Version Condition="'$(DuckRunEfCoreVersion)' != ''">$(DuckRunEfCoreVersion)</Version>
     <Title>DuckRun.EfCore</Title>
-    <Description>Persistence for DuckRun.Core: job run history, console logs, and schedules backed by Entity Framework Core. Supports SQL Server, PostgreSQL, CockroachDB (via Npgsql), and SQLite.</Description>
+    <Description>Persistence for DuckRun: job run history and console logs. Modern .NET (net6–net10) uses Entity Framework Core; net48 uses Entity Framework 6 — same public API. Supports SQL Server, PostgreSQL, CockroachDB (via Npgsql), and MySQL/MariaDB.</Description>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Cronos" Version="0.13.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.34.1" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+  <!-- Each modern TFM gets the EF Core major that targets it, so consumers don't get a mismatched
+       EF Core dragged into their app. Provider versions track the matching EF Core major. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'net7.0'">
+    <EfCoreVersion>7.0.20</EfCoreVersion>
+    <NpgsqlEfVersion>7.0.18</NpgsqlEfVersion>
+    <MySqlEfVersion>7.0.16</MySqlEfVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <EfCoreVersion>8.0.27</EfCoreVersion>
+    <NpgsqlEfVersion>8.0.11</NpgsqlEfVersion>
+    <MySqlEfVersion>8.0.26</MySqlEfVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <EfCoreVersion>9.0.16</EfCoreVersion>
+    <NpgsqlEfVersion>9.0.4</NpgsqlEfVersion>
+    <MySqlEfVersion>9.0.15</MySqlEfVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <EfCoreVersion>10.0.8</EfCoreVersion>
+    <NpgsqlEfVersion>10.0.2</NpgsqlEfVersion>
+    <MySqlEfVersion>10.0.7</MySqlEfVersion>
+  </PropertyGroup>
+
+  <!-- Modern .NET: EF Core + DuckRun.Core. -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net48'">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="$(EfCoreVersion)" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EfCoreVersion)" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="$(EfCoreVersion)" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(NpgsqlEfVersion)" />
+    <PackageReference Include="MySql.EntityFrameworkCore" Version="$(MySqlEfVersion)" />
+    <ProjectReference Include="..\NuGet - DuckRun.Core\NuGet - DuckRun.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\NuGet - DuckRun.Core\NuGet - DuckRun.Core.csproj" />
+  <!-- net48: Entity Framework 6 + DuckRun.Framework. SQL Server is EF6's built-in provider;
+       PostgreSQL/CockroachDB via EntityFramework6.Npgsql; MySQL via MySql.Data.EntityFramework. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <ProjectReference Include="..\NuGet - DuckRun.Framework\NuGet - DuckRun.Framework.csproj" />
+    <PackageReference Include="EntityFramework" Version="6.5.2" />
+    <PackageReference Include="EntityFramework6.Npgsql" Version="6.4.3" />
+    <PackageReference Include="MySql.Data.EntityFramework" Version="9.7.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageReference Include="System.Threading.Channels" Version="10.0.8" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="PolySharp" Version="1.16.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- net6 lacks the BCL attributes behind the `required` keyword (added in net7). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="PolySharp" Version="1.16.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- The EF Core implementation compiles only on modern TFMs; EF6 only on net48. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Compile Remove="Database\DuckRunDbContext.cs" />
+    <Compile Remove="Providers\ProviderConfigurator.cs" />
+    <Compile Remove="Bootstrap\SchemaBootstrap.cs" />
+    <Compile Remove="Stores\EfCoreJobRunStore.cs" />
+    <Compile Remove="Stores\EfCoreConsoleStore.cs" />
+    <Compile Remove="Hosting\EfCoreBuilderExtensions.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'net48'">
+    <Compile Remove="Ef6\**\*.cs" />
   </ItemGroup>
 
 </Project>

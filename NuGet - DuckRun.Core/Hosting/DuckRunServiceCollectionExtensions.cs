@@ -26,9 +26,14 @@ public static class DuckRunServiceCollectionExtensions
         var options = builder.Build();
 
         services.AddSingleton(options);
-        services.AddSingleton<IConsoleStore>(_ => new InMemoryConsoleStore(options.ConsoleEntriesPerRun));
         services.AddSingleton<IJobRunStore>(_ => new InMemoryJobRunStore(options.RunsRetainedPerJob));
         services.AddSingleton<IJobRegistry>(_ => JobScanner.Build(options.AssembliesToScan, options.ExplicitJobs));
+        services.AddSingleton<IConsoleStore>(sp =>
+        {
+            var registry = sp.GetRequiredService<IJobRegistry>();
+            var maxRuns = Math.Max(1000, options.RunsRetainedPerJob * Math.Max(1, registry.All.Count));
+            return new InMemoryConsoleStore(options.ConsoleEntriesPerRun, maxRuns);
+        });
         services.AddSingleton<JobExecutor>();
         services.AddSingleton<LocalConcurrencyTrackers>();
         services.AddSingleton<JobSlotGate>();

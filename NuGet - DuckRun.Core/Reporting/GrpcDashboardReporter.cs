@@ -26,13 +26,14 @@ internal sealed class GrpcDashboardReporter(
 
     private GrpcChannel? _channel;
     private IngestService.IngestServiceClient? _client;
+    private Task? _handshake;
     private Task? _runFlush;
     private Task? _logFlush;
     private Task? _heartbeat;
     private int _stopped;
     private int _disposed;
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
         // Allow HTTP/2 over plaintext for dev (http:// DSN).
         if (dsn.Scheme == "http")
@@ -43,18 +44,13 @@ internal sealed class GrpcDashboardReporter(
         var invoker = _channel.Intercept(interceptor);
         _client = new IngestService.IngestServiceClient(invoker);
 
-        try
-        {
-            await SendHandshakeAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Initial dashboard handshake failed. Will retry in the background; runtime continues without dashboard reporting.");
-        }
-
+        // Handshake (which registers job definitions) retries in the background until it succeeds,
+        // so a dashboard that's briefly unreachable at startup doesn't leave the project's jobs unregistered.
+        _handshake = Task.Run(() => HandshakeLoopAsync(_stop.Token));
         _runFlush = Task.Run(() => FlushRunsAsync(_stop.Token));
         _logFlush = Task.Run(() => FlushLogsAsync(_stop.Token));
         _heartbeat = Task.Run(() => HeartbeatLoopAsync(_stop.Token));
+        return Task.CompletedTask;
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -67,6 +63,7 @@ internal sealed class GrpcDashboardReporter(
         _logs.Writer.TryComplete();
 
         async Task SafeWait(Task? t) { if (t is null) return; try { await t.WaitAsync(cancellationToken); } catch { } }
+        await SafeWait(_handshake);
         await SafeWait(_runFlush);
         await SafeWait(_logFlush);
         await SafeWait(_heartbeat);
@@ -83,6 +80,28 @@ internal sealed class GrpcDashboardReporter(
     public void ReportRun(JobRun run) => _runs.Writer.TryWrite(ToProto(run, coordinator.NodeId));
 
     public void ReportLog(ConsoleLogEntry entry) => _logs.Writer.TryWrite(ToProto(entry));
+
+    private async Task HandshakeLoopAsync(CancellationToken ct)
+    {
+        var delay = TimeSpan.FromSeconds(2);
+        var maxDelay = TimeSpan.FromSeconds(30);
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await SendHandshakeAsync(ct);
+                return; // success — job definitions are now registered with the dashboard
+            }
+            catch (OperationCanceledException) { return; }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Dashboard handshake failed; retrying in {Delay}s.", (int)delay.TotalSeconds);
+            }
+
+            try { await Task.Delay(delay, ct); } catch (OperationCanceledException) { return; }
+            delay = TimeSpan.FromSeconds(Math.Min(maxDelay.TotalSeconds, delay.TotalSeconds * 2));
+        }
+    }
 
     private async Task SendHandshakeAsync(CancellationToken ct)
     {

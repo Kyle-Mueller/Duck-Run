@@ -15,13 +15,15 @@ public static class ProviderConfigurator
             case DuckRunProvider.CockroachDb:
                 dbOpts.UseNpgsql(connectionString);
                 break;
-            case DuckRunProvider.Sqlite:
-                dbOpts.UseSqlite(connectionString);
+            case DuckRunProvider.MySql:
+                dbOpts.UseMySQL(connectionString);
                 break;
             default:
-                throw new NotSupportedException($"DuckRunProvider.{provider} is not supported by DuckRun.EfCore in this release. Supported: SqlServer, Postgres, CockroachDb, Sqlite.");
+                throw new NotSupportedException($"DuckRunProvider.{provider} is not supported by DuckRun.EfCore in this release. Supported: SqlServer, Postgres, CockroachDb, MySql.");
         }
     }
 
-    public static bool SupportsSchema(string? providerName) => !string.IsNullOrEmpty(providerName) && !providerName.Contains("Sqlite", StringComparison.OrdinalIgnoreCase);
+    // MySQL has no schemas, so DuckRun falls back to DuckRun_-prefixed tables there. SQL Server and
+    // PostgreSQL/CockroachDB (Npgsql) both support a dedicated "DuckRun" schema.
+    public static bool SupportsSchema(string? providerName) => !string.IsNullOrEmpty(providerName) && !providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase);
 }

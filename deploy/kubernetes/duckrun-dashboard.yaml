@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: duckrun-dashboard
+  namespace: duckrun
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: duckrun-dashboard
+  template:
+    metadata:
+      labels:
+        app: duckrun-dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: __IMAGE_REF__
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: DuckRun__Db__Provider
+              value: Postgres
+            - name: DuckRun__Db__ConnectionString
+              value: Host=duckrun-postgres;Port=5432;Database=duckrun;Username=duckrun;Password=$(POSTGRES_PASSWORD)
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: duckrun-dashboard
+                  key: postgres-password
+            - name: DuckRun__DashboardSecret
+              valueFrom:
+                secretKeyRef:
+                  name: duckrun-dashboard
+                  key: dashboard-secret
+            - name: DuckRun__Auth__InitialAdminEmail
+              valueFrom:
+                secretKeyRef:
+                  name: duckrun-dashboard
+                  key: admin-email
+            - name: DuckRun__Auth__InitialAdminPassword
+              valueFrom:
+                secretKeyRef:
+                  name: duckrun-dashboard
+                  key: admin-password
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: duckrun-dashboard
+  namespace: duckrun
+spec:
+  selector:
+    app: duckrun-dashboard
+  ports:
+    - port: 80
+      targetPort: 8080

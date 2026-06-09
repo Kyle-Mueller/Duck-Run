@@ -6,9 +6,78 @@ export type Me = {
   lastSignInAt?: string | null;
 };
 
+export type GroupSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  parentGroupId: string | null;
+  fullPath: string;
+  depth: number;
+  createdAt: string;
+};
+
+export type GroupTreeNode = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  fullPath: string;
+  depth: number;
+  projectCount: number;
+  subgroups: GroupTreeNode[];
+};
+
+export type GroupTree = {
+  roots: GroupTreeNode[];
+  rootProjectCount: number;
+};
+
+export type GroupAncestor = {
+  id: string;
+  name: string;
+  slug: string;
+  fullPath: string;
+};
+
+export type GroupSubgroup = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  fullPath: string;
+  depth: number;
+  createdAt: string;
+};
+
+export type GroupProject = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+};
+
+export type GroupDetail = GroupSummary & {
+  ancestors: GroupAncestor[];
+  subgroups: GroupSubgroup[];
+  projects: GroupProject[];
+};
+
+export type GroupMember = {
+  id: string;
+  userId: string;
+  email: string;
+  displayName: string;
+  role: string;
+  addedAt: string;
+};
+
 export type Project = {
   id: string;
   name: string;
+  slug: string;
+  groupId: string | null;
+  groupFullPath?: string | null;
   createdAt: string;
 };
 

@@ -1,0 +1,244 @@
+name: Publish DuckRun packages
+
+# dev  -> test   (merge): run tests, publish only the changed packages to nugettest.org (prerelease)
+# test -> master (merge): run tests, publish only the changed packages to nuget.org (stable) + tag
+#
+# "Changed" is dependency-aware:
+#   Core changed      -> Core, EfCore, Framework, Redis  (all reference Core; Framework embeds its source)
+#   Framework changed -> Framework, Redis                (Redis net48 references Framework)
+#   EfCore changed    -> EfCore
+#   Redis changed     -> Redis
+#   Directory.Build.props changed -> all four
+#
+# Each package keeps its own version line (counted from its <prefix>-v* tags). The version a
+# package DEPENDS ON is pinned separately to the version that actually exists on the feed, so
+# publishing only Redis still yields an installable Redis (it depends on the already-published
+# Core/Framework, not on a Redis-numbered version that was never pushed).
+#
+# Manual runs (workflow_dispatch) pick the package explicitly and use the branch they run from
+# to decide the feed (master -> nuget.org, test -> nugettest.org).
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Which package to publish'
+        type: choice
+        options: [all, core, efcore, framework, redis]
+        default: all
+      version:
+        description: 'Explicit version (e.g. 2.0.0) for the selected package(s). Blank = auto-increment patch. Run from master for nuget.org, from test for nugettest.org.'
+        required: false
+        default: ''
+  push:
+    branches: [test, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.detect.outputs.core }}
+      efcore: ${{ steps.detect.outputs.efcore }}
+      framework: ${{ steps.detect.outputs.framework }}
+      redis: ${{ steps.detect.outputs.redis }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed packages
+        id: detect
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PACKAGE_INPUT: ${{ inputs.package }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "  $1=$2"; }
+
+          # Manual run: publish exactly what was selected (no dependency fan-out).
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            PKG="${PACKAGE_INPUT:-all}"
+            sel() { if [ "$PKG" = "all" ] || [ "$PKG" = "$1" ]; then echo true; else echo false; fi; }
+            echo "Manual dispatch, package=$PKG"
+            emit core "$(sel core)"
+            emit efcore "$(sel efcore)"
+            emit framework "$(sel framework)"
+            emit redis "$(sel redis)"
+            exit 0
+          fi
+
+          # Push: diff the pushed range. Fall back to "everything" for a brand-new branch.
+          if [ -z "${BEFORE:-}" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            CHANGED="$(git ls-files)"
+          else
+            CHANGED="$(git diff --name-only "$BEFORE" "$AFTER")"
+          fi
+          echo "Changed files:"; echo "$CHANGED" | sed 's/^/  /'
+
+          changed() { echo "$CHANGED" | grep -qE "$1"; }
+
+          PROPS=false; CORE_DIR=false; EFCORE_DIR=false; FRAMEWORK_DIR=false; REDIS_DIR=false
+          if changed '^Directory\.Build\.props$'; then PROPS=true; fi
+          if changed '^NuGet - DuckRun\.Core/'; then CORE_DIR=true; fi
+          if changed '^NuGet - DuckRun\.EfCore/'; then EFCORE_DIR=true; fi
+          if changed '^NuGet - DuckRun\.Framework/'; then FRAMEWORK_DIR=true; fi
+          if changed '^NuGet - DuckRun\.Redis/'; then REDIS_DIR=true; fi
+
+          CORE=false; EFCORE=false; FRAMEWORK=false; REDIS=false
+          if [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then CORE=true; fi
+          if [ "$EFCORE_DIR" = true ] || [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then EFCORE=true; fi
+          if [ "$FRAMEWORK_DIR" = true ] || [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then FRAMEWORK=true; fi
+          if [ "$REDIS_DIR" = true ] || [ "$FRAMEWORK_DIR" = true ] || [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then REDIS=true; fi
+
+          echo "Resolved publish set:"
+          emit core "$CORE"
+          emit efcore "$EFCORE"
+          emit framework "$FRAMEWORK"
+          emit redis "$REDIS"
+
+  versions:
+    needs: changes
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.compute.outputs.core }}
+      efcore: ${{ steps.compute.outputs.efcore }}
+      framework: ${{ steps.compute.outputs.framework }}
+      redis: ${{ steps.compute.outputs.redis }}
+      props: ${{ steps.compute.outputs.props }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute versions
+        id: compute
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+          RUN_NUMBER: ${{ github.run_number }}
+          INPUT_VERSION: ${{ inputs.version }}
+          IN_CORE: ${{ needs.changes.outputs.core }}
+          IN_EFCORE: ${{ needs.changes.outputs.efcore }}
+          IN_FRAMEWORK: ${{ needs.changes.outputs.framework }}
+          IN_REDIS: ${{ needs.changes.outputs.redis }}
+        run: |
+          set -euo pipefail
+          bump() { IFS='.' read -r A B C <<< "$1"; echo "$A.$B.$((C + 1))"; }
+
+          # Effective version for a package:
+          #   in the publish set -> its new version (explicit input, or next patch; prerelease on test)
+          #   not in the set     -> its latest published version (the floor others should depend on)
+          compute() {
+            local prefix="$1" inset="$2" lv next
+            lv="$(git tag --list "${prefix}-v*" --sort=-v:refname | head -n 1 | sed "s/^${prefix}-v//")"
+            if [ "$inset" != "true" ]; then
+              if [ -z "$lv" ]; then echo "1.0.0"; else echo "$lv"; fi
+              return
+            fi
+            if [ -n "$INPUT_VERSION" ]; then echo "$INPUT_VERSION"; return; fi
+            if [ -z "$lv" ]; then next="1.0.0"; else next="$(bump "$lv")"; fi
+            if [ "$REF" = "refs/heads/master" ]; then echo "$next"; else echo "${next}-test.${RUN_NUMBER}"; fi
+          }
+
+          C="$(compute core "$IN_CORE")"
+          E="$(compute efcore "$IN_EFCORE")"
+          F="$(compute framework "$IN_FRAMEWORK")"
+          R="$(compute redis "$IN_REDIS")"
+          PROPS="-p:DuckRunCoreVersion=${C} -p:DuckRunEfCoreVersion=${E} -p:DuckRunFrameworkVersion=${F} -p:DuckRunRedisVersion=${R}"
+
+          {
+            echo "core=$C"
+            echo "efcore=$E"
+            echo "framework=$F"
+            echo "redis=$R"
+            echo "props=$PROPS"
+          } >> "$GITHUB_OUTPUT"
+          echo "Effective versions: core=$C efcore=$E framework=$F redis=$R"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            7.0.x
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Test
+        shell: bash
+        run: dotnet test "Tests - DuckRun/Tests - DuckRun.csproj" -c Release --nologo
+
+  core:
+    needs: [changes, versions, test]
+    if: needs.changes.outputs.core == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_publish-package.yml
+    with:
+      package_id: DuckRun.Core
+      tag_prefix: core
+      csproj: NuGet - DuckRun.Core/NuGet - DuckRun.Core.csproj
+      own_version: ${{ needs.versions.outputs.core }}
+      version_props: ${{ needs.versions.outputs.props }}
+    secrets: inherit
+
+  efcore:
+    needs: [changes, versions, test]
+    if: needs.changes.outputs.efcore == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_publish-package.yml
+    with:
+      package_id: DuckRun.EfCore
+      tag_prefix: efcore
+      csproj: NuGet - DuckRun.EfCore/NuGet - DuckRun.EfCore.csproj
+      own_version: ${{ needs.versions.outputs.efcore }}
+      version_props: ${{ needs.versions.outputs.props }}
+    secrets: inherit
+
+  framework:
+    needs: [changes, versions, test]
+    if: needs.changes.outputs.framework == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_publish-package.yml
+    with:
+      package_id: DuckRun.Framework
+      tag_prefix: framework
+      csproj: NuGet - DuckRun.Framework/NuGet - DuckRun.Framework.csproj
+      own_version: ${{ needs.versions.outputs.framework }}
+      version_props: ${{ needs.versions.outputs.props }}
+    secrets: inherit
+
+  redis:
+    needs: [changes, versions, test]
+    if: needs.changes.outputs.redis == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_publish-package.yml
+    with:
+      package_id: DuckRun.Redis
+      tag_prefix: redis
+      csproj: NuGet - DuckRun.Redis/NuGet - DuckRun.Redis.csproj
+      own_version: ${{ needs.versions.outputs.redis }}
+      version_props: ${{ needs.versions.outputs.props }}
+    secrets: inherit
