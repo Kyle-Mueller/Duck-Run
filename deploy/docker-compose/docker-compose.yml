@@ -1,0 +1,38 @@
+# DuckRun Control Dashboard — Docker Compose stack (dashboard + Postgres).
+# The image is pinned to the release version; switch the tag to :latest for
+# rolling updates. Values come from the adjacent .env file.
+services:
+  duckrun-dashboard:
+    image: __IMAGE_REF__
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      DuckRun__DashboardSecret: ${DASHBOARD_SECRET}
+      DuckRun__Db__Provider: Postgres
+      DuckRun__Db__ConnectionString: Host=postgres;Port=5432;Database=duckrun;Username=duckrun;Password=${POSTGRES_PASSWORD}
+      DuckRun__Auth__InitialAdminEmail: ${ADMIN_EMAIL}
+      DuckRun__Auth__InitialAdminPassword: ${ADMIN_PASSWORD}
+      DuckRun__PublicBaseUrl: ${PUBLIC_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: duckrun
+      POSTGRES_USER: duckrun
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - duckrun-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U duckrun -d duckrun"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  duckrun-pgdata:

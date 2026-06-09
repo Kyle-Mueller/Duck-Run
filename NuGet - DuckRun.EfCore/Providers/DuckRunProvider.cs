@@ -14,6 +14,6 @@ public enum DuckRunProvider
     /// <summary>CockroachDB 23.1+. Uses the Npgsql provider (CockroachDB is wire-compatible).</summary>
     CockroachDb,
 
-    /// <summary>SQLite. Recommended for local development and single-instance deployments.</summary>
-    Sqlite,
+    /// <summary>MySQL 8.0+ or MariaDB 10.6+. Has no schemas, so DuckRun uses DuckRun_-prefixed tables.</summary>
+    MySql,
 }

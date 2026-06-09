@@ -1,4 +1,5 @@
 using System.Reflection;
+using DuckRun.Core.Hosting;
 using DuckRun.Core.Jobs;
 using DuckRun.Core.Runs;
 using DuckRun.Core.Scheduler;
@@ -15,27 +16,29 @@ internal static class DashboardEndpoints
 
     public static IEndpointConventionBuilder Map(IEndpointRouteBuilder endpoints, string prefix)
     {
-        var group = endpoints.MapGroup(prefix);
+        // net6 has no MapGroup, so map full-path routes individually and return one composite builder.
+        // Serve the index at both "/prefix" and "/prefix/" so neither 404s.
+        var builders = new List<IEndpointConventionBuilder>
+        {
+            endpoints.MapGet(prefix, ServeIndex),
+            endpoints.MapGet($"{prefix}/", ServeIndex),
+            endpoints.MapGet($"{prefix}/assets/{{**path}}", ServeAsset),
+            endpoints.MapGet($"{prefix}/api/jobs", ListJobs),
+            endpoints.MapGet($"{prefix}/api/jobs/{{name}}", GetJob),
+            endpoints.MapGet($"{prefix}/api/jobs/{{name}}/runs", GetRuns),
+            endpoints.MapGet($"{prefix}/api/runs/{{id:guid}}", GetRun),
+            endpoints.MapGet($"{prefix}/api/runs/{{id:guid}}/console", GetConsole),
+            endpoints.MapPost($"{prefix}/api/jobs/{{name}}/trigger", TriggerJob),
+            endpoints.MapPost($"{prefix}/api/runs/{{id:guid}}/cancel", CancelRun),
+        };
 
-        group.MapGet("/", ServeIndex);
-        group.MapGet("assets/{**path}", ServeAsset);
-
-        var api = group.MapGroup("api");
-        api.MapGet("jobs", ListJobs);
-        api.MapGet("jobs/{name}", GetJob);
-        api.MapGet("jobs/{name}/runs", GetRuns);
-        api.MapGet("runs/{id:guid}", GetRun);
-        api.MapGet("runs/{id:guid}/console", GetConsole);
-        api.MapPost("jobs/{name}/trigger", TriggerJob);
-        api.MapPost("runs/{id:guid}/cancel", CancelRun);
-
-        return group;
+        return new CompositeConventionBuilder(builders);
     }
 
     private static IResult ServeIndex()
     {
         var bytes = ReadEmbeddedBytes("index.html");
-        return bytes is null ? Results.NotFound() : Results.Bytes(bytes, "text/html; charset=utf-8");
+        return bytes is null ? Results.NotFound() : Results.File(bytes, "text/html; charset=utf-8");
     }
 
     private static IResult ServeAsset(string path)
@@ -43,7 +46,7 @@ internal static class DashboardEndpoints
         if (path.Contains("..")) return Results.NotFound();
         var key = path.Replace('/', '.').Replace('\\', '.');
         var bytes = ReadEmbeddedBytes(key);
-        return bytes is null ? Results.NotFound() : Results.Bytes(bytes, MimeFor(path));
+        return bytes is null ? Results.NotFound() : Results.File(bytes, MimeFor(path));
     }
 
     private static IResult ListJobs(IDuckRunController controller, IJobRunStore runs)

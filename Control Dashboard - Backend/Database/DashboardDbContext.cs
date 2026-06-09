@@ -8,6 +8,8 @@ internal sealed class DashboardDbContext(DbContextOptions<DashboardDbContext> op
     public const string SchemaName = "DuckRunDash";
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Group> Groups => Set<Group>();
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
@@ -32,11 +34,33 @@ internal sealed class DashboardDbContext(DbContextOptions<DashboardDbContext> op
             e.HasIndex(x => x.Email).IsUnique();
         });
 
+        Table<Group>(modelBuilder, supportsSchema, "Group", "DuckRunDash_Group", e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Slug).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.FullPath).HasMaxLength(2000).IsRequired();
+            e.HasIndex(x => x.ParentGroupId);
+            e.HasIndex(x => x.FullPath).IsUnique();
+            e.HasIndex(x => new { x.ParentGroupId, x.Slug }).IsUnique();
+        });
+
+        Table<GroupMember>(modelBuilder, supportsSchema, "GroupMember", "DuckRunDash_GroupMember", e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.GroupId, x.UserId }).IsUnique();
+            e.Property(x => x.Role).HasMaxLength(40).IsRequired();
+        });
+
         Table<Project>(modelBuilder, supportsSchema, "Project", "DuckRunDash_Project", e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Slug).HasMaxLength(100).IsRequired();
             e.HasIndex(x => x.OwnerId);
+            e.HasIndex(x => x.GroupId);
+            e.HasIndex(x => new { x.GroupId, x.Slug }).IsUnique();
         });
 
         Table<ProjectMember>(modelBuilder, supportsSchema, "ProjectMember", "DuckRunDash_ProjectMember", e =>

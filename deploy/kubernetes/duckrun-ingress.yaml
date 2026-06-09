@@ -1,0 +1,28 @@
+# Example ingress with cert-manager + nginx-ingress. Swap the host, issuer and
+# ingress class to match your cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: duckrun-dashboard
+  namespace: duckrun
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"   # SignalR keep-alive
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - duckrun.example.com
+      secretName: duckrun-tls
+  rules:
+    - host: duckrun.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: duckrun-dashboard
+                port:
+                  number: 80

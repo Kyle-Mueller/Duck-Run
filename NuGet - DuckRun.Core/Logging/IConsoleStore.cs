@@ -11,7 +11,4 @@ internal interface IConsoleStore
 
     /// <summary>Read the log entries for a run, ordered by timestamp ascending.</summary>
     Task<IReadOnlyList<ConsoleLogEntry>> GetForRunAsync(Guid runId, CancellationToken ct = default);
-
-    /// <summary>Drop in-memory state for a run. Persistent backends ignore this — durable rows stay in the DB.</summary>
-    void Drop(Guid runId);
 }

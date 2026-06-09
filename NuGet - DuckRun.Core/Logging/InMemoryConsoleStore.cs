@@ -2,14 +2,36 @@ using System.Collections.Concurrent;
 
 namespace DuckRun.Core.Logging;
 
-internal sealed class InMemoryConsoleStore(int maxPerRun) : IConsoleStore
+/// <summary>
+/// In-memory console store. Bounds both the entries kept per run and the number of runs tracked,
+/// evicting the oldest run's log when the run cap is exceeded — so a long-lived process doesn't leak
+/// console buffers for runs that have long since aged out of the run history.
+/// </summary>
+internal sealed class InMemoryConsoleStore : IConsoleStore
 {
     private readonly ConcurrentDictionary<Guid, ConsoleRunLog> _byRun = new();
-    private readonly int _maxPerRun = maxPerRun;
+    private readonly LinkedList<Guid> _order = new();
+    private readonly object _orderLock = new();
+    private readonly int _maxPerRun;
+    private readonly int _maxRuns;
+
+    public InMemoryConsoleStore(int maxPerRun, int maxRuns)
+    {
+        _maxPerRun = maxPerRun;
+        _maxRuns = Math.Max(1, maxRuns);
+    }
 
     public void Append(ConsoleLogEntry entry)
     {
-        var bucket = _byRun.GetOrAdd(entry.RunId, _ => new ConsoleRunLog(_maxPerRun));
+        if (_byRun.TryGetValue(entry.RunId, out var existing))
+        {
+            existing.Append(entry);
+            return;
+        }
+
+        var created = new ConsoleRunLog(_maxPerRun);
+        var bucket = _byRun.GetOrAdd(entry.RunId, created);
+        if (ReferenceEquals(bucket, created)) TrackNewRun(entry.RunId);
         bucket.Append(entry);
     }
 
@@ -19,5 +41,17 @@ internal sealed class InMemoryConsoleStore(int maxPerRun) : IConsoleStore
         return Task.FromResult(entries);
     }
 
-    public void Drop(Guid runId) => _byRun.TryRemove(runId, out _);
+    private void TrackNewRun(Guid runId)
+    {
+        lock (_orderLock)
+        {
+            _order.AddFirst(runId);
+            while (_order.Count > _maxRuns)
+            {
+                var evict = _order.Last!.Value;
+                _order.RemoveLast();
+                _byRun.TryRemove(evict, out _);
+            }
+        }
+    }
 }

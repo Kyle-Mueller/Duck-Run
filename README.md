@@ -146,8 +146,8 @@ builder.Services.AddDuckRun(o =>
     // Optional: multi-instance orchestration
     o.UseRedis(builder.Configuration.GetConnectionString("Redis"));
 
-    // Centralized dashboard: connect via DSN
-    o.UseDashboard("https://abc123@dashboard.example.com/42");
+    // Centralized dashboard: connect via DSN (the project id is a GUID the dashboard issues)
+    o.UseDashboard("https://abc123@dashboard.example.com/3fa85f64-5717-4562-b3fc-2c963f66afa6");
 
     // ...or, if you want the embedded runtime UI instead:
     // o.UseStandaloneDashboard();
@@ -202,7 +202,8 @@ public class MvcApplication : HttpApplication
             o.UseEfCore("Server=...;Database=...;", DuckRunProvider.SqlServer);
             o.UseRedis("redis-1:6379,redis-2:6379");
 
-            o.UseDashboard("https://abc123@dashboard.example.com/42");
+            // Persistence (EF6) and Redis coordination work on net48 today. Reporting to the
+            // centralized Control Dashboard over a DSN from net48 is still on the roadmap.
         });
     }
 
@@ -213,7 +214,7 @@ public class MvcApplication : HttpApplication
 }
 ```
 
-Jobs are declared exactly the same way as on modern .NET, with `[DuckRunJob]`. If you're using a third-party container (Autofac, Unity, Ninject), pass it via `o.UseContainer(...)` so DuckRun resolves job classes from your DI graph.
+Jobs are declared exactly the same way as on modern .NET, with `[DuckRunJob]`. net48 has no built-in DI container, so DuckRun constructs job classes with `Activator.CreateInstance` by default. If you use a third-party container (Autofac, Unity, Ninject), give DuckRun a factory via `o.UseJobFactory(type => container.Resolve(type))` so it resolves job classes from your DI graph.
 
 `DuckRun.EfCore` on net48 transparently uses Entity Framework 6 under the hood, with the same `UseEfCore(connString, provider)` API — no code change required when porting between runtimes.
 
@@ -241,7 +242,7 @@ Supported providers:
 | PostgreSQL | `Postgres` | Npgsql |
 | CockroachDB | `CockroachDb` | Npgsql (Cockroach wire-compatible) |
 | SQL Server | `SqlServer` | Microsoft.Data.SqlClient (modern) / System.Data.SqlClient (net48) |
-| MySQL / MariaDB | `MySql` | Pomelo (modern) / MySql.Data (net48) |
+| MySQL / MariaDB | `MySql` | MySql.EntityFrameworkCore (modern) / MySql.Data.EntityFramework (net48) |
 
 The first time DuckRun boots against a fresh database it creates a `DuckRun` schema (or `DuckRun_`-prefixed tables on MySQL, which has no schemas) with the tables it needs. The DDL is idempotent — no `dotnet ef migrations` step required.
 
@@ -650,6 +651,9 @@ DuckRun uses a Sentry-style DSN to connect host apps to the Control Dashboard:
 ```
 https://<publicKey>@<dashboard-host>/<projectId>
 ```
+
+`<projectId>` is the GUID the dashboard assigns to the project, e.g.
+`https://abc123@dashboard.example.com/3fa85f64-5717-4562-b3fc-2c963f66afa6`.
 
 The host app uses the public key to authenticate ingest (HTTPS POSTs) and to subscribe to the SignalR command hub. Each project in the dashboard has its own DSN; rotate it from the project's Settings page and the old key stops working immediately.
 

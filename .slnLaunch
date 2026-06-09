@@ -1,0 +1,25 @@
+[
+  {
+    "Name": "Control Server",
+    "Projects": [
+      {
+        "Path": "Control Dashboard - Backend\\Control Dashboard - Backend.csproj",
+        "Action": "Start",
+        "DebugTarget": "Control Server"
+      },
+      {
+        "Path": "ControlDashboard-Frontend\\Control Dashboard - Frontend.esproj",
+        "Action": "Start"
+      }
+    ]
+  },
+  {
+    "Name": "Web - Landing Page",
+    "Projects": [
+      {
+        "Path": "Web - Landing Page\\Web - Landing Page.esproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

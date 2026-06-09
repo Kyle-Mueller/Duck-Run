@@ -1,0 +1,56 @@
+# Minimal Postgres for evaluation. For production prefer a managed Postgres or an
+# operator (CloudNativePG, Zalando). Adjust the storage class/size to your cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: duckrun-postgres
+  namespace: duckrun
+spec:
+  selector:
+    app: duckrun-postgres
+  ports:
+    - port: 5432
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: duckrun-postgres
+  namespace: duckrun
+spec:
+  serviceName: duckrun-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: duckrun-postgres
+  template:
+    metadata:
+      labels:
+        app: duckrun-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: duckrun
+            - name: POSTGRES_USER
+              value: duckrun
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: duckrun-dashboard
+                  key: postgres-password
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,35 @@
+<Project>
+
+  <!--
+    Shared NuGet package metadata for the packable DuckRun projects
+    (Core, EfCore, Framework, Redis).
+
+    No IsPackable condition: Directory.Build.props is imported before the
+    csproj evaluates, so $(IsPackable) isn't set yet. Properties like
+    Authors / License / VersionPrefix are inert on non-packable projects
+    (they won't be packed), so unconditional defaults are correct here.
+    The only visible side effect on non-packable projects is an extra
+    .xml doc file in bin/, which is harmless.
+
+    Build-essential settings (LangVersion, Nullable, ImplicitUsings) live
+    inline in each csproj so projects stay valid if this file is removed.
+  -->
+  <PropertyGroup Label="Shared package metadata">
+    <Authors>Kyle Müller</Authors>
+    <Company>DuckRun</Company>
+    <Copyright>Copyright © Kyle Müller</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>duckrun;job;scheduler;cron;background;hangfire;tickerq</PackageTags>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">alpha</VersionSuffix>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

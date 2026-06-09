@@ -9,7 +9,7 @@ builder.Services.AddDuckRun(o =>
 {
     o.AddJobsFromAssembly(typeof(Program).Assembly);
     o.UseStandaloneDashboard("/duckrun");
-    o.UseEfCore("Data Source=duckrun.db", DuckRunProvider.Sqlite);
+    o.UseEfCore("Host=localhost;Port=5432;Database=duckrun;Username=duckrun;Password=duckrun", DuckRunProvider.Postgres);
     o.UseRedis("127.0.0.1:6379,abortConnect=false", projectId: "duckrun-test");
     o.UseDashboard("http://gPtCgBPO7CfkZBdqsGMYhreSgAnZ5HY4Tao9jfcjEuw@localhost:8091/88cd0322-5731-4015-a20e-1e1b0907dccb");
 });
