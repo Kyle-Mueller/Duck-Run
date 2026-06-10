@@ -54,6 +54,17 @@ internal sealed class EfCoreJobRunStore(IDbContextFactory<DuckRunDbContext> cont
         return await ctx.JobRuns.CountAsync(r => r.JobName == jobName && r.State == runningName, ct);
     }
 
+    public async Task<IReadOnlyList<JobRun>> GetRunsSinceAsync(DateTimeOffset since, int max, CancellationToken ct)
+    {
+        await using var ctx = await contextFactory.CreateDbContextAsync(ct);
+        var sinceUtc = since.UtcDateTime;
+        var records = await ctx.JobRuns.Where(r => r.CreatedAt >= sinceUtc)
+                                       .OrderByDescending(r => r.CreatedAt)
+                                       .Take(max)
+                                       .ToListAsync(ct);
+        return records.ConvertAll(FromRecord);
+    }
+
     private static JobRunRecord ToRecord(JobRun run) => new()
     {
         Id = run.Id,

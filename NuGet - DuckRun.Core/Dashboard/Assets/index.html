@@ -27,11 +27,14 @@
       <ul id="job-list" class="job-list"></ul>
     </aside>
 
-    <section class="detail" id="detail">
-      <div class="empty">
-        <p>Select a job to see runs and console output.</p>
-      </div>
-    </section>
+    <div class="detail">
+      <section class="overview" id="overview"></section>
+      <section class="detail-body" id="detail">
+        <div class="empty">
+          <p>Select a job to see runs and console output.</p>
+        </div>
+      </section>
+    </div>
   </main>
 
   <template id="job-list-item-tpl">
@@ -61,7 +64,14 @@
     </div>
 
     <section class="panel">
-      <header class="panel-head">Recent runs</header>
+      <header class="panel-head">
+        <span>Recent runs</span>
+        <select class="runs-take" data-runs-take aria-label="Number of runs to show">
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </header>
       <table class="runs-table">
         <thead>
           <tr>
@@ -80,7 +90,10 @@
     <section class="panel" id="run-panel" hidden>
       <header class="panel-head">
         <span>Run console</span>
-        <span class="dim run-id-label"></span>
+        <span class="run-id-actions">
+          <span class="dim run-id-label"></span>
+          <button class="console-close" type="button" data-close-console title="Close console" aria-label="Close console">✕</button>
+        </span>
       </header>
       <pre class="console" id="console"></pre>
       <div class="error-block" hidden>

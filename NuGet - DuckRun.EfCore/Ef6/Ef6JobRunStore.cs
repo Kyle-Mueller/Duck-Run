@@ -49,6 +49,17 @@ internal sealed class Ef6JobRunStore(Func<Ef6DuckRunDbContext> contextFactory) :
         return await ctx.JobRuns.CountAsync(r => r.JobName == jobName && r.State == runningName, ct);
     }
 
+    public async Task<IReadOnlyList<JobRun>> GetRunsSinceAsync(DateTimeOffset since, int max, CancellationToken ct)
+    {
+        using var ctx = contextFactory();
+        var sinceUtc = since.UtcDateTime;
+        var records = await ctx.JobRuns.Where(r => r.CreatedAt >= sinceUtc)
+                                       .OrderByDescending(r => r.CreatedAt)
+                                       .Take(max)
+                                       .ToListAsync(ct);
+        return records.ConvertAll(FromRecord);
+    }
+
     private static JobRunRecord ToRecord(JobRun run) => new()
     {
         Id = run.Id,
