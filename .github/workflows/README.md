@@ -42,17 +42,17 @@ dev  --merge-->  test  --merge-->  master
 
 ## Only the changed packages publish (dependency-aware)
 
-On a push, the `changes` job diffs the pushed range and decides which packages to publish. It is **dependency-aware**, because the packages are linked:
+On a push, the `changes` job diffs the pushed range and decides which packages to publish. It is **dependency-aware**, but only fans out where a rebuild is genuinely required:
 
-- `DuckRun.Framework` compiles `DuckRun.Core`'s source files directly (source-linked), so it **must** rebuild whenever Core changes.
-- `DuckRun.EfCore` and `DuckRun.Redis` (net10) reference `DuckRun.Core`; `DuckRun.Redis` (net48) references `DuckRun.Framework`.
+- `DuckRun.Framework` **compiles `DuckRun.Core`'s source files directly** (`<Compile Include>` from Core), so it **must** rebuild whenever Core changes. Core therefore fans out to Framework.
+- `DuckRun.EfCore` and `DuckRun.Redis` reference `DuckRun.Core` / `DuckRun.Framework` as ordinary **minimum-version** NuGet dependencies. Their own bits don't change when an upstream package changes, and a consumer can upgrade the upstream package independently — so they are **not** rebuilt on an upstream change.
 
 So the fan-out is:
 
 | You changed | Published |
 |---|---|
-| `NuGet - DuckRun.Core/**` | Core, EfCore, Framework, Redis |
-| `NuGet - DuckRun.Framework/**` | Framework, Redis |
+| `NuGet - DuckRun.Core/**` | Core, Framework |
+| `NuGet - DuckRun.Framework/**` | Framework |
 | `NuGet - DuckRun.EfCore/**` | EfCore |
 | `NuGet - DuckRun.Redis/**` | Redis |
 | `Directory.Build.props` | all four |

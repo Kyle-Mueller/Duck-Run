@@ -3,11 +3,11 @@ name: Publish DuckRun packages
 # dev  -> test   (merge): run tests, publish only the changed packages to nugettest.org (prerelease)
 # test -> master (merge): run tests, publish only the changed packages to nuget.org (stable) + tag
 #
-# "Changed" is dependency-aware:
-#   Core changed      -> Core, EfCore, Framework, Redis  (all reference Core; Framework embeds its source)
-#   Framework changed -> Framework, Redis                (Redis net48 references Framework)
-#   EfCore changed    -> EfCore
-#   Redis changed     -> Redis
+# "Changed" is dependency-aware, but only where a rebuild is genuinely required:
+#   Core changed      -> Core, Framework   (Framework <Compile>s Core's source in, so it must rebuild)
+#   Framework changed -> Framework
+#   EfCore changed    -> EfCore            (EfCore/Redis only NuGet-reference upstream by minimum version,
+#   Redis changed     -> Redis              so consumers upgrade the upstream independently — no fan-out)
 #   Directory.Build.props changed -> all four
 #
 # Each package keeps its own version line (counted from its <prefix>-v* tags). The version a
@@ -95,11 +95,14 @@ jobs:
           if changed '^NuGet - DuckRun\.Framework/'; then FRAMEWORK_DIR=true; fi
           if changed '^NuGet - DuckRun\.Redis/'; then REDIS_DIR=true; fi
 
+          # Only Framework hard-depends on Core's source (it <Compile>s Core files in), so a Core change
+          # fans out to Framework. EfCore/Redis are minimum-version NuGet consumers of upstream packages
+          # and need no upstream-triggered rebuild. Directory.Build.props affects every package.
           CORE=false; EFCORE=false; FRAMEWORK=false; REDIS=false
           if [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then CORE=true; fi
-          if [ "$EFCORE_DIR" = true ] || [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then EFCORE=true; fi
+          if [ "$EFCORE_DIR" = true ] || [ "$PROPS" = true ]; then EFCORE=true; fi
           if [ "$FRAMEWORK_DIR" = true ] || [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then FRAMEWORK=true; fi
-          if [ "$REDIS_DIR" = true ] || [ "$FRAMEWORK_DIR" = true ] || [ "$CORE_DIR" = true ] || [ "$PROPS" = true ]; then REDIS=true; fi
+          if [ "$REDIS_DIR" = true ] || [ "$PROPS" = true ]; then REDIS=true; fi
 
           echo "Resolved publish set:"
           emit core "$CORE"
