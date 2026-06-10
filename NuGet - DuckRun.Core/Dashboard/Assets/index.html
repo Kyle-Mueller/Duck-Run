@@ -11,7 +11,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
+    <div class="brand" data-nav-home>
       <span class="brand-mark">DuckRun</span>
       <span class="brand-sub">runtime dashboard</span>
     </div>
@@ -23,17 +23,16 @@
 
   <main class="layout">
     <aside class="sidebar">
+      <nav class="side-nav">
+        <button type="button" class="nav-item" data-nav-home>Dashboard</button>
+      </nav>
       <div class="sidebar-head">Jobs</div>
       <ul id="job-list" class="job-list"></ul>
     </aside>
 
     <div class="detail">
       <section class="overview" id="overview"></section>
-      <section class="detail-body" id="detail">
-        <div class="empty">
-          <p>Select a job to see runs and console output.</p>
-        </div>
-      </section>
+      <section class="detail-body" id="detail" hidden></section>
     </div>
   </main>
 
