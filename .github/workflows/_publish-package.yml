@@ -8,8 +8,8 @@ name: _publish-package
 #                    dependencies are pinned to the versions that actually exist on the
 #                    feed instead of inheriting this package's own version.
 # Feed is chosen by branch:
-#   refs/heads/master -> nuget.org (stable) + git tag
-#   refs/heads/test    -> apiint.nugettest.org (prerelease)
+#   refs/heads/master -> nuget.org (stable) + git tag        [API key: NUGET_API_KEY]
+#   refs/heads/test    -> apiint.nugettest.org (prerelease)  [Trusted Publishing / OIDC, no stored key]
 
 on:
   workflow_call:
@@ -37,14 +37,13 @@ on:
     secrets:
       NUGET_API_KEY:
         required: false
-      NUGET_TEST_API_KEY:
-        required: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # push the version tag on master
+      id-token: write   # OIDC token for Trusted Publishing on the test feed
 
     steps:
       - name: Checkout
@@ -81,10 +80,25 @@ jobs:
         shell: bash
         run: dotnet nuget push './nupkgs/*.nupkg' --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
-      - name: Push to nugettest.org (test)
+      # Test feed uses Trusted Publishing (OIDC): NuGet/login trades the GitHub OIDC
+      # token for a short-lived (1h) API key — nothing is stored. The trust policy on
+      # int.nugettest.org must name THIS file (_publish-package.yml), because that is
+      # the job_workflow_ref where login runs. token-service-url / audience default to
+      # the test gallery but can be overridden by repo variables if the nugettest
+      # Trusted Publishing page shows different values.
+      - name: NuGet login (OIDC -> short-lived key, test gallery)
+        if: github.ref == 'refs/heads/test'
+        id: nugetlogin
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGETTEST_USER }}
+          token-service-url: ${{ vars.NUGETTEST_TOKEN_URL || 'https://int.nugettest.org/api/v2/token' }}
+          audience: ${{ vars.NUGETTEST_AUDIENCE || 'https://int.nugettest.org' }}
+
+      - name: Push to nugettest.org (test, Trusted Publishing)
         if: github.ref == 'refs/heads/test'
         shell: bash
-        run: dotnet nuget push './nupkgs/*.nupkg' --api-key "${{ secrets.NUGET_TEST_API_KEY }}" --source https://apiint.nugettest.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push './nupkgs/*.nupkg' --api-key "${{ steps.nugetlogin.outputs.NUGET_API_KEY }}" --source https://apiint.nugettest.org/v3/index.json --skip-duplicate
 
       - name: Tag the release
         if: github.ref == 'refs/heads/master'

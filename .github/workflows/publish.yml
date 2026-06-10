@@ -192,6 +192,7 @@ jobs:
     if: needs.changes.outputs.core == 'true'
     permissions:
       contents: write
+      id-token: write
     uses: ./.github/workflows/_publish-package.yml
     with:
       package_id: DuckRun.Core
@@ -206,6 +207,7 @@ jobs:
     if: needs.changes.outputs.efcore == 'true'
     permissions:
       contents: write
+      id-token: write
     uses: ./.github/workflows/_publish-package.yml
     with:
       package_id: DuckRun.EfCore
@@ -220,6 +222,7 @@ jobs:
     if: needs.changes.outputs.framework == 'true'
     permissions:
       contents: write
+      id-token: write
     uses: ./.github/workflows/_publish-package.yml
     with:
       package_id: DuckRun.Framework
@@ -234,6 +237,7 @@ jobs:
     if: needs.changes.outputs.redis == 'true'
     permissions:
       contents: write
+      id-token: write
     uses: ./.github/workflows/_publish-package.yml
     with:
       package_id: DuckRun.Redis
