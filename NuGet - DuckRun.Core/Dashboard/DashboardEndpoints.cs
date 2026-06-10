@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 using DuckRun.Core.Hosting;
 using DuckRun.Core.Jobs;
 using DuckRun.Core.Runs;
@@ -17,11 +18,13 @@ internal static class DashboardEndpoints
     public static IEndpointConventionBuilder Map(IEndpointRouteBuilder endpoints, string prefix)
     {
         // net6 has no MapGroup, so map full-path routes individually and return one composite builder.
-        // Serve the index at both "/prefix" and "/prefix/" so neither 404s.
+        // The index is mapped ONCE: ASP.NET Core routing collapses a trailing slash, so the "{prefix}"
+        // route already serves both "/prefix" and "/prefix/" — also mapping "{prefix}/" makes both match
+        // the same request and throws AmbiguousMatchException. ServeIndex injects a <base href="{prefix}/">
+        // so the page's relative asset/api URLs resolve under the prefix regardless of the trailing slash.
         var builders = new List<IEndpointConventionBuilder>
         {
-            endpoints.MapGet(prefix, ServeIndex),
-            endpoints.MapGet($"{prefix}/", ServeIndex),
+            endpoints.MapGet(prefix, () => ServeIndex(prefix)),
             endpoints.MapGet($"{prefix}/assets/{{**path}}", ServeAsset),
             endpoints.MapGet($"{prefix}/api/jobs", ListJobs),
             endpoints.MapGet($"{prefix}/api/jobs/{{name}}", GetJob),
@@ -35,10 +38,14 @@ internal static class DashboardEndpoints
         return new CompositeConventionBuilder(builders);
     }
 
-    private static IResult ServeIndex()
+    private static IResult ServeIndex(string prefix)
     {
         var bytes = ReadEmbeddedBytes("index.html");
-        return bytes is null ? Results.NotFound() : Results.File(bytes, "text/html; charset=utf-8");
+        if (bytes is null) return Results.NotFound();
+        // Inject <base> so the relative "assets/..." and "api/..." URLs in index.html resolve under the
+        // prefix whether the page was reached at "/prefix" or "/prefix/".
+        var html = Encoding.UTF8.GetString(bytes).Replace("<head>", $"<head>\n  <base href=\"{prefix}/\">");
+        return Results.Content(html, "text/html; charset=utf-8");
     }
 
     private static IResult ServeAsset(string path)
