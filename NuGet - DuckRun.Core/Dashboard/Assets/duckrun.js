@@ -7,6 +7,7 @@
     selectedRunId: null,
     runDetail: null,
     console: [],
+    view: "overview",
     window: 1440,
     runsTake: 25,
     overview: null,
@@ -56,6 +57,38 @@
 
   function stateClass(s) {
     return (s || "").toLowerCase();
+  }
+
+  // --- routing: overview page vs job detail page ---
+  function currentRoute() {
+    const h = location.hash.replace(/^#\/?/, "");
+    if (h.startsWith("jobs/")) return { view: "job", job: decodeURIComponent(h.slice(5)) };
+    return { view: "overview", job: null };
+  }
+
+  function navHome() { location.hash = "#/"; }
+  function navJob(name) { location.hash = `#/jobs/${encodeURIComponent(name)}`; }
+
+  function applyRoute() {
+    const r = currentRoute();
+    state.view = r.view;
+    state.selectedJob = r.job;
+    if (r.view !== "job") { state.selectedRunId = null; state.runDetail = null; state.console = []; }
+    $overview.hidden = r.view !== "overview";
+    $detail.hidden = r.view !== "job";
+    renderNav();
+    renderJobList();
+    if (r.view === "overview") {
+      fetchOverview();
+    } else {
+      state.runs = [];
+      renderDetail();
+      refreshRuns();
+    }
+  }
+
+  function renderNav() {
+    document.querySelectorAll(".side-nav .nav-item").forEach(el => el.classList.toggle("active", state.view === "overview"));
   }
 
   // --- overview / analytics ---
@@ -184,17 +217,23 @@
   }
 
   function renderDetail() {
-    if (!state.selectedJob) {
-      $detail.innerHTML = `<div class="empty"><p>Select a job to see runs and console output.</p></div>`;
-      return;
-    }
+    $detail.innerHTML = "";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "detail-back";
+    back.textContent = "← Overview";
+    back.addEventListener("click", navHome);
+    $detail.appendChild(back);
+
     const job = state.jobs.find(j => j.name === state.selectedJob);
     if (!job) {
-      $detail.innerHTML = `<div class="empty"><p>Job not found.</p></div>`;
+      const note = document.createElement("div");
+      note.className = "empty";
+      note.innerHTML = `<p>${state.jobs.length ? "Job not found." : "Loading…"}</p>`;
+      $detail.appendChild(note);
       return;
     }
 
-    $detail.innerHTML = "";
     const node = detailTpl.content.cloneNode(true);
     node.querySelector(".job-title").textContent = job.name;
     node.querySelector(".job-cron-val").textContent = fmtCron(job.cron);
@@ -311,8 +350,7 @@
       $jobCount.textContent = `${jobs.length} job${jobs.length === 1 ? "" : "s"}`;
       $updatedAt.textContent = `updated ${new Date().toLocaleTimeString()}`;
       renderJobList();
-      if (state.selectedJob) await refreshRuns();
-      else renderDetail();
+      if (state.view === "job" && state.selectedJob) await refreshRuns();
     } catch (err) {
       $updatedAt.textContent = `error: ${err.message}`;
     }
@@ -345,12 +383,7 @@
   }
 
   function selectJob(name) {
-    state.selectedJob = name;
-    state.selectedRunId = null;
-    state.runDetail = null;
-    state.console = [];
-    refreshRuns();
-    renderJobList();
+    navJob(name);   // hashchange -> applyRoute switches to the job page
   }
 
   function selectRun(id) {
@@ -384,11 +417,13 @@
   }
 
   buildOverviewShell();
-  fetchOverview();
+  document.querySelectorAll("[data-nav-home]").forEach(el => el.addEventListener("click", navHome));
+  window.addEventListener("hashchange", applyRoute);
+  applyRoute();
   refreshJobs();
   state.polling = setInterval(refreshJobs, 3000);
-  state.overviewPolling = setInterval(fetchOverview, 5000);
+  state.overviewPolling = setInterval(() => { if (state.view === "overview") fetchOverview(); }, 5000);
   state.consolePolling = setInterval(() => {
-    if (state.selectedRunId) refreshConsole();
+    if (state.view === "job" && state.selectedRunId) refreshConsole();
   }, 1500);
 })();

@@ -338,3 +338,20 @@ button { font: inherit; cursor: pointer; }
   color: var(--ink-dim); font-size: 13px; line-height: 1; padding: 1px 0 1px 12px;
 }
 .console-close:hover { color: var(--brick); }
+
+/* --- sidebar nav / routing --- */
+.brand { cursor: pointer; }
+.side-nav { padding: 0 14px 16px; border-bottom: 1px solid var(--hairline); margin-bottom: 14px; }
+.nav-item {
+  width: 100%; text-align: left; background: transparent; border: none;
+  padding: 9px 10px; border-radius: 3px;
+  font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--ink);
+}
+.nav-item:hover { background: var(--cream-soft); }
+.nav-item.active { background: var(--ink); color: var(--cream); }
+.detail-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; border: none; padding: 0; margin-bottom: 20px;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+}
+.detail-back:hover { color: var(--coral); }
