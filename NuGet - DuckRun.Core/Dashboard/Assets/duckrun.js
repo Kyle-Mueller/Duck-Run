@@ -7,14 +7,20 @@
     selectedRunId: null,
     runDetail: null,
     console: [],
+    window: 1440,
+    runsTake: 25,
+    overview: null,
     polling: null,
     consolePolling: null,
+    overviewPolling: null,
   };
 
   const $jobCount = document.getElementById("job-count");
   const $updatedAt = document.getElementById("updated-at");
   const $jobList = document.getElementById("job-list");
   const $detail = document.getElementById("detail");
+  const $overview = document.getElementById("overview");
+  let $kpiRow, $bars, $chartSub;
   const jobItemTpl = document.getElementById("job-list-item-tpl");
   const detailTpl = document.getElementById("detail-tpl");
 
@@ -50,6 +56,107 @@
 
   function stateClass(s) {
     return (s || "").toLowerCase();
+  }
+
+  // --- overview / analytics ---
+  function buildOverviewShell() {
+    $overview.innerHTML = `
+      <div class="overview-head">
+        <span class="overview-title">Runtime overview</span>
+        <div class="window-select">
+          <button type="button" data-window="60">1h</button>
+          <button type="button" data-window="1440" class="active">24h</button>
+          <button type="button" data-window="10080">7d</button>
+        </div>
+      </div>
+      <div class="kpi-row" id="kpi-row"></div>
+      <div class="panel chart-card">
+        <header class="panel-head"><span>Runs over time</span><span class="dim" id="chart-sub"></span></header>
+        <div class="bars" id="bars"></div>
+        <div class="chart-axis" id="chart-axis"></div>
+      </div>`;
+    $kpiRow = document.getElementById("kpi-row");
+    $bars = document.getElementById("bars");
+    $chartSub = document.getElementById("chart-sub");
+    $overview.querySelectorAll("[data-window]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.window = parseInt(btn.dataset.window, 10);
+        $overview.querySelectorAll("[data-window]").forEach(b => b.classList.toggle("active", b === btn));
+        fetchOverview();
+      });
+    });
+  }
+
+  async function fetchOverview() {
+    try {
+      state.overview = await api(`overview?window=${state.window}&buckets=${bucketsFor(state.window)}`);
+      renderOverview();
+    } catch (err) {
+      $updatedAt.textContent = `error: ${err.message}`;
+    }
+  }
+
+  function renderOverview() {
+    const o = state.overview;
+    if (!o || !$kpiRow) return;
+    const t = o.totals;
+    const srText = t.successRate == null ? "—" : `${t.successRate}%`;
+    const exPct = t.finished ? Math.round((t.exceptions / t.finished) * 100) : 0;
+    $kpiRow.innerHTML =
+      ringTile(t.successRate ?? 0, "var(--olive)", srText, "success rate", `${t.succeeded}/${t.finished} finished`) +
+      ringTile(exPct, "var(--brick)", String(t.exceptions), "exceptions", `${t.failed} failed · ${t.timedOut} timed out`) +
+      statTile(t.total, "runs in window", false, o.truncated ? "capped at 20k" : "") +
+      statTile(t.running, "running now", t.running > 0, "");
+    renderBars(o.buckets, o.windowMinutes);
+  }
+
+  function ringTile(pct, color, center, label, sub) {
+    const r = 26, c = 2 * Math.PI * r, dash = clampPct(pct) / 100 * c;
+    return `<div class="kpi kpi-ring">
+      <svg class="ring" viewBox="0 0 64 64">
+        <circle class="ring-track" cx="32" cy="32" r="${r}"></circle>
+        <circle class="ring-fill" cx="32" cy="32" r="${r}" stroke="${color}" stroke-dasharray="${dash.toFixed(1)} ${(c - dash).toFixed(1)}" transform="rotate(-90 32 32)"></circle>
+        <text class="ring-text" x="32" y="37">${center}</text>
+      </svg>
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-sub">${sub}</div>
+    </div>`;
+  }
+
+  function statTile(value, label, accent, sub) {
+    return `<div class="kpi kpi-stat">
+      <div class="kpi-num${accent ? " accent" : ""}">${value}</div>
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-sub">${sub || ""}</div>
+    </div>`;
+  }
+
+  function renderBars(buckets, windowMinutes) {
+    if (!$bars) return;
+    const totals = buckets.map(b => b.succeeded + b.failed + b.other);
+    const max = Math.max(1, ...totals);
+    const sum = totals.reduce((a, c) => a + c, 0);
+    const seg = (n, cls) => n > 0 ? `<span class="seg ${cls}" style="flex:${n}"></span>` : "";
+    $bars.innerHTML = buckets.map((b, i) => {
+      const tot = totals[i];
+      const h = tot === 0 ? 0 : Math.max(4, (tot / max) * 100);
+      const when = fmtBucket(b.start, windowMinutes);
+      return `<div class="bar" title="${when} · ${tot} run${tot === 1 ? "" : "s"} (${b.succeeded}✓ ${b.failed}✕)">
+        <div class="bar-stack" style="height:${h}%">${seg(b.failed, "f")}${seg(b.other, "o")}${seg(b.succeeded, "s")}</div>
+      </div>`;
+    }).join("");
+    if ($chartSub) $chartSub.textContent = `${windowLabel(windowMinutes)} · ${sum} run${sum === 1 ? "" : "s"}`;
+    const axis = document.getElementById("chart-axis");
+    if (axis && buckets.length) axis.innerHTML = `<span>${fmtBucket(buckets[0].start, windowMinutes)}</span><span>now</span>`;
+  }
+
+  function clampPct(p) { return Math.max(0, Math.min(100, p || 0)); }
+  function bucketsFor(min) { return min <= 60 ? 12 : min <= 1440 ? 24 : 28; }
+  function windowLabel(min) { return min <= 60 ? "last hour" : min <= 1440 ? "last 24 hours" : "last 7 days"; }
+  function fmtBucket(ms, windowMinutes) {
+    const d = new Date(ms);
+    if (windowMinutes <= 1440) return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${d.toLocaleTimeString(undefined, { hour: "2-digit" })}`;
   }
 
   function renderJobList() {
@@ -103,6 +210,14 @@
       triggerBtn.textContent = "Manual trigger disabled";
     }
     triggerBtn.addEventListener("click", () => triggerJob(job.name));
+
+    const takeSel = node.querySelector("[data-runs-take]");
+    if (takeSel) {
+      takeSel.value = String(state.runsTake);
+      takeSel.addEventListener("change", e => { state.runsTake = parseInt(e.target.value, 10) || 25; refreshRuns(); });
+    }
+    const closeBtn = node.querySelector("[data-close-console]");
+    if (closeBtn) closeBtn.addEventListener("click", closeConsole);
 
     const tbody = node.querySelector(".runs-body");
     tbody.innerHTML = "";
@@ -206,7 +321,7 @@
   async function refreshRuns() {
     if (!state.selectedJob) return;
     try {
-      const runs = await api(`jobs/${encodeURIComponent(state.selectedJob)}/runs?take=50`);
+      const runs = await api(`jobs/${encodeURIComponent(state.selectedJob)}/runs?take=${state.runsTake}`);
       state.runs = runs;
       renderDetail();
     } catch (err) {
@@ -243,6 +358,13 @@
     refreshConsole();
   }
 
+  function closeConsole() {
+    state.selectedRunId = null;
+    state.runDetail = null;
+    state.console = [];
+    renderDetail();
+  }
+
   async function triggerJob(name) {
     try {
       await api(`jobs/${encodeURIComponent(name)}/trigger`, { method: "POST" });
@@ -261,8 +383,11 @@
     }
   }
 
+  buildOverviewShell();
+  fetchOverview();
   refreshJobs();
   state.polling = setInterval(refreshJobs, 3000);
+  state.overviewPolling = setInterval(fetchOverview, 5000);
   state.consolePolling = setInterval(() => {
     if (state.selectedRunId) refreshConsole();
   }, 1500);

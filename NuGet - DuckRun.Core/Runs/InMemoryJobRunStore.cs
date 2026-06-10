@@ -60,4 +60,13 @@ internal sealed class InMemoryJobRunStore(int maxPerJob) : IJobRunStore
 
         return Task.FromResult(count);
     }
+
+    public Task<IReadOnlyList<JobRun>> GetRunsSinceAsync(DateTimeOffset since, int max, CancellationToken ct)
+    {
+        var runs = _byId.Values.Where(r => r.CreatedAt >= since)
+                               .OrderByDescending(r => r.CreatedAt)
+                               .Take(max)
+                               .ToList();
+        return Task.FromResult<IReadOnlyList<JobRun>>(runs);
+    }
 }

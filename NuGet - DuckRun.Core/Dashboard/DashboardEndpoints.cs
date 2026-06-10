@@ -26,6 +26,7 @@ internal static class DashboardEndpoints
         {
             endpoints.MapGet(prefix, () => ServeIndex(prefix)),
             endpoints.MapGet($"{prefix}/assets/{{**path}}", ServeAsset),
+            endpoints.MapGet($"{prefix}/api/overview", GetOverview),
             endpoints.MapGet($"{prefix}/api/jobs", ListJobs),
             endpoints.MapGet($"{prefix}/api/jobs/{{name}}", GetJob),
             endpoints.MapGet($"{prefix}/api/jobs/{{name}}/runs", GetRuns),
@@ -80,6 +81,65 @@ internal static class DashboardEndpoints
         }
         return Results.Json(payload);
     }
+
+    // Aggregate KPIs + a time-bucketed run series over a window (minutes). Reads whatever IJobRunStore
+    // is registered, so it reflects the in-memory runtime window in standalone mode and real history
+    // when DuckRun.EfCore is configured (its GetRunsSinceAsync is a DB query, not an in-memory scan).
+    private static async Task<IResult> GetOverview(IJobRunStore runs, int window = 1440, int buckets = 24, CancellationToken ct = default)
+    {
+        window = Math.Clamp(window, 5, 60 * 24 * 31);   // 5 minutes .. 31 days
+        buckets = Math.Clamp(buckets, 6, 96);
+        const int maxRuns = 20000;
+
+        var now = DateTimeOffset.UtcNow;
+        var since = now.AddMinutes(-window);
+        var all = await runs.GetRunsSinceAsync(since, maxRuns, ct);
+
+        int succeeded = 0, failed = 0, cancelled = 0, timedOut = 0, running = 0, pending = 0;
+        foreach (var r in all)
+        {
+            switch (r.State)
+            {
+                case JobRunState.Succeeded: succeeded++; break;
+                case JobRunState.Failed:    failed++;    break;
+                case JobRunState.Cancelled: cancelled++; break;
+                case JobRunState.TimedOut:  timedOut++;  break;
+                case JobRunState.Running:   running++;   break;
+                default:                    pending++;   break;
+            }
+        }
+        var finished = succeeded + failed + cancelled + timedOut;
+
+        var sinceMs = since.ToUnixTimeMilliseconds();
+        var bucketMs = window * 60_000.0 / buckets;
+        var series = new BucketAcc[buckets];
+        for (var i = 0; i < buckets; i++) series[i].Start = (long)(sinceMs + i * bucketMs);
+        foreach (var r in all)
+        {
+            var t = (r.StartedAt ?? r.CreatedAt).ToUnixTimeMilliseconds();
+            var idx = Math.Clamp((int)((t - sinceMs) / bucketMs), 0, buckets - 1);
+            if (r.State is JobRunState.Succeeded) series[idx].Succeeded++;
+            else if (r.State is JobRunState.Failed or JobRunState.TimedOut) series[idx].Failed++;
+            else series[idx].Other++;
+        }
+
+        return Results.Json(new
+        {
+            windowMinutes = window,
+            generatedAt = now,
+            totals = new
+            {
+                total = all.Count,
+                succeeded, failed, cancelled, timedOut, running, pending, finished,
+                exceptions = failed + timedOut,
+                successRate = finished == 0 ? (double?)null : Math.Round(100.0 * succeeded / finished, 1),
+            },
+            buckets = series.Select(s => new { start = s.Start, succeeded = s.Succeeded, failed = s.Failed, other = s.Other }).ToArray(),
+            truncated = all.Count >= maxRuns,
+        });
+    }
+
+    private struct BucketAcc { public long Start; public int Succeeded; public int Failed; public int Other; }
 
     private static async Task<IResult> GetJob(string name, IDuckRunController controller)
     {
