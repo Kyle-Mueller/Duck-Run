@@ -68,7 +68,8 @@
       node.querySelector(".job-cron").textContent = fmtCron(j.cron);
       const dot = node.querySelector(".job-state-dot");
       const lastState = j.lastRunState || (j.runningCount > 0 ? "running" : "");
-      dot.classList.add(stateClass(lastState));
+      const dotClass = stateClass(lastState);
+      if (dotClass) dot.classList.add(dotClass);   // a job with no runs has no state class — classList.add("") throws
       if (state.selectedJob && state.selectedJob === j.name) btn.classList.add("active");
       btn.addEventListener("click", () => selectJob(j.name));
       $jobList.appendChild(node);
